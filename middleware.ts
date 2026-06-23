@@ -1,6 +1,3 @@
-El problema es que `@clerk/nextjs` v5 cambió la API. Ve a GitHub → `middleware.ts` → reemplaza todo con esto:
-
-```typescript
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 
@@ -21,4 +18,3 @@ export const config = {
     '/(api|trpc)(.*)',
   ],
 }
-```
