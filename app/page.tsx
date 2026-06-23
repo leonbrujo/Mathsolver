@@ -27,6 +27,12 @@ export default function Home() {
   const resultRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (isLoaded && !user) {
+      window.location.href = 'https://accounts.math.quiz-quests.com/sign-in?redirect_url=https://math.quiz-quests.com/'
+    }
+  }, [isLoaded, user])
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('subscribed') === 'true') {
       setSubscribed(true)
