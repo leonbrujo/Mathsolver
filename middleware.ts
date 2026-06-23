@@ -1,10 +1,17 @@
+El problema es que `@clerk/nextjs` v5 cambió la API. Ve a GitHub → `middleware.ts` → reemplaza todo con esto:
+
+```typescript
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
 const isPublicRoute = createRouteMatcher(['/sign-in(.*)'])
 
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {
-    await auth.protect()
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.redirect(new URL('/sign-in', request.url))
+    }
   }
 })
 
@@ -14,3 +21,4 @@ export const config = {
     '/(api|trpc)(.*)',
   ],
 }
+```
