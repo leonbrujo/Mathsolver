@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100dvh;
+  background-color: #0F0F1A;
+}
+
+/* KaTeX math rendering */
+.math-output .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+/* Step cards animation */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.step-card {
+  animation: slideUp 0.3s ease forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #1A1A2E; }
+::-webkit-scrollbar-thumb { background: #6C63FF; border-radius: 2px; }
+
+/* Mobile tap highlight */
+* { -webkit-tap-highlight-color: transparent; }
