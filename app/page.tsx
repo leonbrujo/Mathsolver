@@ -131,7 +131,7 @@ export default function Home() {
               New
             </button>
           )}
-          <UserButton afterSignOutUrl="/sign-in" />
+          <UserButton afterSignOutUrl="https://accounts.math.quiz-quests.com/sign-in?redirect_url=https://math.quiz-quests.com/" />
         </div>
       </header>
 
