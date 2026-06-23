@@ -3,7 +3,7 @@
 App de resolución de problemas matemáticos paso a paso con IA (Claude).
 
 ## Stack
-- **Next.js 14** (App Router)
+- **Next.js 14** (App Router) 
 - **Tailwind CSS**
 - **KaTeX** (renderizado de fórmulas)
 - **Claude Haiku 4.5** via Anthropic API
