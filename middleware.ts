@@ -1,6 +1,3 @@
-El middleware está fallando en runtime. Vamos a simplificarlo — ve a GitHub → `middleware.ts` → reemplaza todo con esto:
-
-```typescript
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 const isPublicRoute = createRouteMatcher(['/sign-in(.*)'])
@@ -17,6 +14,3 @@ export const config = {
     '/(api|trpc)(.*)',
   ],
 }
-```
-
-Commit y esperamos el redeploy.
