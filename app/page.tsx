@@ -12,6 +12,25 @@ interface Solucion {
   usesLeft: number | null; isAdmin: boolean; isSubscribed: boolean
 }
 
+const SIGNIN_APPEARANCE = {
+  elements: {
+    rootBox: { width: '100%' },
+    card: { background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, width: '100%' },
+    headerTitle: { display: 'none' },
+    headerSubtitle: { display: 'none' },
+    socialButtonsBlockButton: { background: 'white', color: '#333', borderRadius: '10px', fontSize: '14px', fontWeight: '500' },
+    dividerLine: { background: 'rgba(255,255,255,0.1)' },
+    dividerText: { color: 'rgba(255,255,255,0.3)', fontSize: '12px' },
+    formFieldInput: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', borderRadius: '10px', fontSize: '14px' },
+    formFieldLabel: { color: 'rgba(255,255,255,0.6)', fontSize: '13px' },
+    formButtonPrimary: { background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', borderRadius: '10px', fontSize: '14px', fontWeight: '500' },
+    footerActionText: { color: 'rgba(255,255,255,0.4)', fontSize: '12px' },
+    footerActionLink: { color: '#A78BFA', fontSize: '12px' },
+    identityPreviewText: { color: 'white' },
+    identityPreviewEditButtonIcon: { color: '#A78BFA' },
+  }
+}
+
 export default function Home() {
   const { user, isLoaded } = useUser()
   const [texto, setTexto] = useState('')
@@ -83,7 +102,6 @@ export default function Home() {
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  // Loading
   if (!isLoaded) return (
     <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0D0D1A' }}>
       <div style={{ width: 28, height: 28, border: '2px solid rgba(124,58,237,0.3)', borderTop: '2px solid #7C3AED', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -91,42 +109,41 @@ export default function Home() {
     </div>
   )
 
-  // Landing page
+  // ═══ LANDING PAGE ═══
   if (!user) return (
-    <div className="landing">
-      <div className="g1"/><div className="g2"/><div className="g3"/>
-      <div className="l-inner">
+    <div className="lp">
+      <div className="lp-glow lp-glow-1" />
+      <div className="lp-glow lp-glow-2" />
+      <div className="lp-glow lp-glow-3" />
 
-        <nav className="l-nav">
-          <div className="l-logo">
-            <div className="l-logo-box">∑</div>
+      <div className="lp-container">
+        <nav className="lp-nav">
+          <div className="lp-brand">
+            <div className="lp-brand-icon">∑</div>
             <div>
-              <div className="l-logo-name">MathSolver AI</div>
-              <div className="l-logo-by">by Quiz Quests</div>
+              <div className="lp-brand-name">MathSolver AI</div>
+              <div className="lp-brand-sub">by Quiz Quests</div>
             </div>
           </div>
-          <div className="l-nav-right">
-            <span className="l-nav-hint">✨ 3 free solves to start</span>
-            <span className="l-nav-pill">Free to start</span>
-          </div>
+          <div className="lp-nav-tag">✨ 3 free solves to start</div>
         </nav>
 
-        <div className="l-hero">
-          {/* Left */}
+        <div className="lp-hero">
+          {/* Hero content (first on mobile and desktop-left) */}
           <div>
-            <div className="l-tag">
-              <div className="l-tag-dot"/>
+            <div className="lp-eyebrow">
+              <div className="lp-eyebrow-dot" />
               AI-powered math tutor
             </div>
-            <h1 className="l-h1">
-              Stuck on math?<br/>
-              <span className="l-grad">Get unstuck instantly.</span>
+            <h1 className="lp-title">
+              Stuck on math?<br />
+              <span className="lp-title-grad">Get unstuck instantly.</span>
             </h1>
-            <p className="l-sub">
+            <p className="lp-desc">
               Type any problem or snap a photo of your homework. Get step-by-step solutions with full explanations — not just the answer.
             </p>
 
-            <div className="l-pills">
+            <div className="lp-pills">
               {[
                 { l: 'Algebra', bg: 'rgba(124,58,237,.12)', b: 'rgba(124,58,237,.4)', c: '#C4B5FD' },
                 { l: 'Calculus', bg: 'rgba(6,182,212,.12)', b: 'rgba(6,182,212,.4)', c: '#67E8F9' },
@@ -135,63 +152,44 @@ export default function Home() {
                 { l: 'Statistics', bg: 'rgba(251,191,36,.12)', b: 'rgba(251,191,36,.4)', c: '#FCD34D' },
                 { l: 'Trigonometry', bg: 'rgba(99,102,241,.12)', b: 'rgba(99,102,241,.4)', c: '#A5B4FC' },
               ].map(p => (
-                <span key={p.l} className="l-pill" style={{ background: p.bg, borderColor: p.b, color: p.c }}>{p.l}</span>
+                <span key={p.l} className="lp-pill" style={{ background: p.bg, borderColor: p.b, color: p.c }}>{p.l}</span>
               ))}
             </div>
 
-            <div className="l-free">
-              <span style={{ fontSize: 28, flexShrink: 0 }}>🎁</span>
-              <div className="l-free-txt">
-                <strong style={{ color: '#34D399' }}>3 free solves</strong> when you sign up — no credit card needed. Then <strong style={{ color: '#34D399' }}>$3.99/month</strong> for unlimited access.
+            <div className="lp-gift">
+              <span className="lp-gift-icon">🎁</span>
+              <div className="lp-gift-text">
+                <strong>3 free solves</strong> when you sign up — no credit card needed. Then <strong>$3.99/month</strong> for unlimited access.
               </div>
             </div>
 
-            <div className="l-feat">
+            <div className="lp-features">
               {[
                 { i: '📐', t: 'Step-by-step', d: 'Every problem broken into clear numbered steps with full explanations.' },
                 { i: '📷', t: 'Snap a photo', d: 'Point your camera at any problem — textbook or handwritten notes.' },
                 { i: '💡', t: 'Tips to learn', d: 'Each solution ends with a tip so you remember the concept next time.' },
               ].map(f => (
-                <div key={f.t} className="l-fc">
-                  <div className="l-fc-icon">{f.i}</div>
-                  <div className="l-fc-title">{f.t}</div>
-                  <div className="l-fc-desc">{f.d}</div>
+                <div key={f.t} className="lp-feature">
+                  <div className="lp-feature-icon">{f.i}</div>
+                  <div className="lp-feature-title">{f.t}</div>
+                  <div className="lp-feature-desc">{f.d}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right - login */}
-          <div>
-            <div className="l-card">
-              <div className="l-card-title">Start solving now</div>
-              <div className="l-card-sub">Join thousands of students</div>
-              <SignIn
-                appearance={{
-                  elements: {
-                    rootBox: { width: '100%' },
-                    card: { background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, width: '100%' },
-                    headerTitle: { display: 'none' },
-                    headerSubtitle: { display: 'none' },
-                    socialButtonsBlockButton: { background: 'white', color: '#333', borderRadius: 10, fontSize: 14, fontWeight: '500' },
-                    dividerLine: { background: 'rgba(255,255,255,0.1)' },
-                    dividerText: { color: 'rgba(255,255,255,0.3)', fontSize: 12 },
-                    formFieldInput: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', borderRadius: 10, fontSize: 14 },
-                    formFieldLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
-                    formButtonPrimary: { background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', borderRadius: 10, fontSize: 14, fontWeight: '500' },
-                    footerActionText: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
-                    footerActionLink: { color: '#A78BFA', fontSize: 12 },
-                    identityPreviewText: { color: 'white' },
-                    identityPreviewEditButtonIcon: { color: '#A78BFA' },
-                  }
-                }}
-              />
+          {/* Login (second on mobile, right on desktop) */}
+          <div className="lp-login-wrap">
+            <div className="lp-card">
+              <div className="lp-card-title">Start solving now</div>
+              <div className="lp-card-sub">Join thousands of students</div>
+              <SignIn appearance={SIGNIN_APPEARANCE} />
             </div>
-            <div className="l-stats">
+            <div className="lp-stats">
               {[{ n: '10k+', l: 'Problems solved' }, { n: '4.9★', l: 'Student rating' }, { n: 'Free', l: 'To get started' }].map(s => (
-                <div key={s.l} className="l-stat">
-                  <div className="l-stat-num">{s.n}</div>
-                  <div className="l-stat-lbl">{s.l}</div>
+                <div key={s.l} className="lp-stat">
+                  <div className="lp-stat-num">{s.n}</div>
+                  <div className="lp-stat-label">{s.l}</div>
                 </div>
               ))}
             </div>
@@ -201,14 +199,10 @@ export default function Home() {
     </div>
   )
 
-  // App (logged in)
+  // ═══ APP (logged in) ═══
   return (
     <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: '#0F0F1A' }}>
-      <style>{`
-        @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .step-card{animation:slideUp .3s ease forwards}
-      `}</style>
+      <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}.step-card{animation:slideUp .3s ease forwards}`}</style>
 
       <header style={{ position: 'sticky', top: 0, zIndex: 10, background: '#0F0F1A', borderBottom: '1px solid #2A2A4A', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
