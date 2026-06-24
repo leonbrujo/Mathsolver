@@ -183,7 +183,9 @@ export default function Home() {
             <div className="lp-card">
               <div className="lp-card-title">Start solving now</div>
               <div className="lp-card-sub">Join thousands of students</div>
-              <SignIn appearance={SIGNIN_APPEARANCE} />
+              <div className="lp-clerk">
+                <SignIn appearance={SIGNIN_APPEARANCE} />
+              </div>
             </div>
             <div className="lp-stats">
               {[{ n: '10k+', l: 'Problems solved' }, { n: '4.9★', l: 'Student rating' }, { n: 'Free', l: 'To get started' }].map(s => (
