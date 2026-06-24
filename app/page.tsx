@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useUser, UserButton, SignIn } from '@clerk/nextjs'
 import dynamic from 'next/dynamic'
-import './landing.css'
 
 const MathRenderer = dynamic(() => import('../components/MathRenderer'), { ssr: false })
 
