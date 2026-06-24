@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useUser, UserButton, SignIn } from '@clerk/nextjs'
 import dynamic from 'next/dynamic'
+import './landing.css'
 
 const MathRenderer = dynamic(() => import('../components/MathRenderer'), { ssr: false })
 
@@ -50,7 +51,7 @@ export default function Home() {
       const data = await res.json()
       if (data.url) window.location.href = data.url
     } catch {
-      setError('Failed to start checkout. Please try again.')
+      setError('Failed to start checkout.')
     } finally {
       setCheckingOut(false)
     }
@@ -73,7 +74,7 @@ export default function Home() {
       if (data.usesLeft === 0) setShowPaywall(true)
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
     } catch (e: any) {
-      setError(e.message || 'Something went wrong. Please try again.')
+      setError(e.message || 'Something went wrong.')
     } finally { setCargando(false) }
   }
 
@@ -83,6 +84,7 @@ export default function Home() {
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  // Loading
   if (!isLoaded) return (
     <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0D0D1A' }}>
       <div style={{ width: 28, height: 28, border: '2px solid rgba(124,58,237,0.3)', borderTop: '2px solid #7C3AED', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -90,303 +92,262 @@ export default function Home() {
     </div>
   )
 
-  // ── LANDING PAGE ──────────────────────────────────────────────────────────
+  // Landing page
   if (!user) return (
-    <>
-      <style>{`
-        *{box-sizing:border-box;margin:0;padding:0}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        body{background:#0D0D1A}
-        .landing{background:#0D0D1A;min-height:100dvh;color:#fff;font-family:system-ui,sans-serif;overflow-x:hidden;position:relative}
-        .g1{position:fixed;width:700px;height:700px;background:radial-gradient(circle,rgba(124,58,237,.22) 0%,transparent 70%);top:-250px;left:-250px;pointer-events:none;z-index:0}
-        .g2{position:fixed;width:600px;height:600px;background:radial-gradient(circle,rgba(6,182,212,.16) 0%,transparent 70%);top:-150px;right:-200px;pointer-events:none;z-index:0}
-        .g3{position:fixed;width:500px;height:500px;background:radial-gradient(circle,rgba(236,72,153,.12) 0%,transparent 70%);bottom:-150px;left:30%;pointer-events:none;z-index:0}
-        .inner{position:relative;z-index:1;max-width:1160px;margin:0 auto;padding:0 24px}
-        nav{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
-        .logo{display:flex;align-items:center;gap:10px}
-        .logo-box{width:42px;height:42px;background:linear-gradient(135deg,#7C3AED,#EC4899);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-        .logo-name{font-size:17px;font-weight:600}
-        .logo-by{font-size:11px;color:rgba(255,255,255,.4)}
-        .nav-right{display:flex;align-items:center;gap:12px}
-        .nav-hint{font-size:13px;color:rgba(255,255,255,.45)}
-        .nav-pill{background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(6,182,212,.3));border:1px solid rgba(124,58,237,.45);border-radius:20px;padding:6px 16px;font-size:12px;color:#C4B5FD;white-space:nowrap}
-        .hero{display:grid;grid-template-columns:1fr 360px;gap:56px;padding:56px 0 48px;align-items:start}
-        .tag{display:inline-flex;align-items:center;gap:7px;background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.35);border-radius:20px;padding:6px 16px;font-size:12px;color:#F9A8D4;margin-bottom:22px}
-        .tag-dot{width:6px;height:6px;background:#EC4899;border-radius:50%;animation:pulse 1.5s infinite;flex-shrink:0}
-        h1{font-size:50px;font-weight:700;line-height:1.1;margin-bottom:18px}
-        .grad{background:linear-gradient(90deg,#A78BFA,#06B6D4,#34D399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-        .sub{font-size:16px;color:rgba(255,255,255,.55);line-height:1.75;margin-bottom:28px}
-        .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
-        .pill{display:inline-flex;align-items:center;padding:6px 14px;border-radius:20px;font-size:13px;border:1px solid;white-space:nowrap}
-        .free{display:flex;align-items:center;gap:14px;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);border-radius:14px;padding:14px 18px;margin-bottom:36px}
-        .free-txt{font-size:14px;color:rgba(255,255,255,.7);line-height:1.5}
-        .feat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-        .fc{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px}
-        .fc-icon{font-size:24px;margin-bottom:10px}
-        .fc-title{font-size:13px;font-weight:600;margin-bottom:5px}
-        .fc-desc{font-size:12px;color:rgba(255,255,255,.4);line-height:1.6}
-        .login-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:22px;padding:28px;backdrop-filter:blur(20px)}
-        .lc-title{font-size:18px;font-weight:600;text-align:center;margin-bottom:4px}
-        .lc-sub{font-size:12px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:22px}
-        .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
-        .stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 8px;text-align:center}
-        .stat-num{font-size:15px;font-weight:600}
-        .stat-lbl{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
+    <div className="landing">
+      <div className="g1"/><div className="g2"/><div className="g3"/>
+      <div className="l-inner">
 
-        @media(max-width:860px){
-          .hero{grid-template-columns:1fr;gap:40px}
-          h1{font-size:36px}
-          .feat{grid-template-columns:1fr}
-          .nav-hint{display:none}
-          .login-card{padding:20px}
-        }
-        @media(max-width:480px){
-          h1{font-size:30px}
-          .inner{padding:0 16px}
-          nav{padding:16px 0}
-          .hero{padding:36px 0 32px}
-          .sub{font-size:14px}
-          .free{flex-direction:column;gap:8px;text-align:center}
-        }
-      `}</style>
-
-      <div className="landing">
-        <div className="g1"/><div className="g2"/><div className="g3"/>
-        <div className="inner">
-          <nav>
-            <div className="logo">
-              <div className="logo-box">∑</div>
-              <div>
-                <div className="logo-name">MathSolver AI</div>
-                <div className="logo-by">by Quiz Quests</div>
-              </div>
-            </div>
-            <div className="nav-right">
-              <div className="nav-hint">✨ 3 free solves to start</div>
-              <div className="nav-pill">Free to start</div>
-            </div>
-          </nav>
-
-          <div className="hero">
-            {/* Left column */}
+        <nav className="l-nav">
+          <div className="l-logo">
+            <div className="l-logo-box">∑</div>
             <div>
-              <div className="tag"><div className="tag-dot"/>AI-powered math tutor</div>
-              <h1>Stuck on math?<br/><span className="grad">Get unstuck instantly.</span></h1>
-              <p className="sub">Type any problem or snap a photo of your homework. Get step-by-step solutions with full explanations — not just the answer.</p>
+              <div className="l-logo-name">MathSolver AI</div>
+              <div className="l-logo-by">by Quiz Quests</div>
+            </div>
+          </div>
+          <div className="l-nav-right">
+            <span className="l-nav-hint">✨ 3 free solves to start</span>
+            <span className="l-nav-pill">Free to start</span>
+          </div>
+        </nav>
 
-              <div className="pills">
-                {[
-                  {l:'Algebra',bg:'rgba(124,58,237,.12)',b:'rgba(124,58,237,.4)',c:'#C4B5FD'},
-                  {l:'Calculus',bg:'rgba(6,182,212,.12)',b:'rgba(6,182,212,.4)',c:'#67E8F9'},
-                  {l:'Geometry',bg:'rgba(52,211,153,.12)',b:'rgba(52,211,153,.4)',c:'#6EE7B7'},
-                  {l:'Arithmetic',bg:'rgba(236,72,153,.12)',b:'rgba(236,72,153,.4)',c:'#F9A8D4'},
-                  {l:'Statistics',bg:'rgba(251,191,36,.12)',b:'rgba(251,191,36,.4)',c:'#FCD34D'},
-                  {l:'Trigonometry',bg:'rgba(99,102,241,.12)',b:'rgba(99,102,241,.4)',c:'#A5B4FC'},
-                ].map(p => <div key={p.l} className="pill" style={{background:p.bg,borderColor:p.b,color:p.c}}>{p.l}</div>)}
+        <div className="l-hero">
+          {/* Left */}
+          <div>
+            <div className="l-tag">
+              <div className="l-tag-dot"/>
+              AI-powered math tutor
+            </div>
+            <h1 className="l-h1">
+              Stuck on math?<br/>
+              <span className="l-grad">Get unstuck instantly.</span>
+            </h1>
+            <p className="l-sub">
+              Type any problem or snap a photo of your homework. Get step-by-step solutions with full explanations — not just the answer.
+            </p>
+
+            <div className="l-pills">
+              {[
+                { l: 'Algebra', bg: 'rgba(124,58,237,.12)', b: 'rgba(124,58,237,.4)', c: '#C4B5FD' },
+                { l: 'Calculus', bg: 'rgba(6,182,212,.12)', b: 'rgba(6,182,212,.4)', c: '#67E8F9' },
+                { l: 'Geometry', bg: 'rgba(52,211,153,.12)', b: 'rgba(52,211,153,.4)', c: '#6EE7B7' },
+                { l: 'Arithmetic', bg: 'rgba(236,72,153,.12)', b: 'rgba(236,72,153,.4)', c: '#F9A8D4' },
+                { l: 'Statistics', bg: 'rgba(251,191,36,.12)', b: 'rgba(251,191,36,.4)', c: '#FCD34D' },
+                { l: 'Trigonometry', bg: 'rgba(99,102,241,.12)', b: 'rgba(99,102,241,.4)', c: '#A5B4FC' },
+              ].map(p => (
+                <span key={p.l} className="l-pill" style={{ background: p.bg, borderColor: p.b, color: p.c }}>{p.l}</span>
+              ))}
+            </div>
+
+            <div className="l-free">
+              <span style={{ fontSize: 28, flexShrink: 0 }}>🎁</span>
+              <div className="l-free-txt">
+                <strong style={{ color: '#34D399' }}>3 free solves</strong> when you sign up — no credit card needed. Then <strong style={{ color: '#34D399' }}>$3.99/month</strong> for unlimited access.
               </div>
+            </div>
 
-              <div className="free">
-                <div style={{fontSize:28,flexShrink:0}}>🎁</div>
-                <div className="free-txt">
-                  <span style={{color:'#34D399',fontWeight:600}}>3 free solves</span> when you sign up — no credit card needed. Then <span style={{color:'#34D399',fontWeight:600}}>$3.99/month</span> for unlimited access.
+            <div className="l-feat">
+              {[
+                { i: '📐', t: 'Step-by-step', d: 'Every problem broken into clear numbered steps with full explanations.' },
+                { i: '📷', t: 'Snap a photo', d: 'Point your camera at any problem — textbook or handwritten notes.' },
+                { i: '💡', t: 'Tips to learn', d: 'Each solution ends with a tip so you remember the concept next time.' },
+              ].map(f => (
+                <div key={f.t} className="l-fc">
+                  <div className="l-fc-icon">{f.i}</div>
+                  <div className="l-fc-title">{f.t}</div>
+                  <div className="l-fc-desc">{f.d}</div>
                 </div>
-              </div>
-
-              <div className="feat">
-                {[
-                  {i:'📐',t:'Step-by-step',d:'Every problem broken into clear numbered steps with full explanations.'},
-                  {i:'📷',t:'Snap a photo',d:'Point your camera at any problem — textbook or handwritten notes.'},
-                  {i:'💡',t:'Tips to learn',d:'Each solution ends with a tip so you remember the concept next time.'},
-                ].map(f => (
-                  <div key={f.t} className="fc">
-                    <div className="fc-icon">{f.i}</div>
-                    <div className="fc-title">{f.t}</div>
-                    <div className="fc-desc">{f.d}</div>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
+          </div>
 
-            {/* Right column — login */}
-            <div>
-              <div className="login-card">
-                <div className="lc-title">Start solving now</div>
-                <div className="lc-sub">Join thousands of students</div>
-                <SignIn
-                  appearance={{
-                    elements: {
-                      rootBox: { width: '100%' },
-                      card: { background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, width: '100%' },
-                      headerTitle: { display: 'none' },
-                      headerSubtitle: { display: 'none' },
-                      socialButtonsBlockButton: { background: 'white', color: '#333', borderRadius: 10, fontSize: 14, fontWeight: '500' },
-                      dividerLine: { background: 'rgba(255,255,255,0.1)' },
-                      dividerText: { color: 'rgba(255,255,255,0.3)', fontSize: 12 },
-                      formFieldInput: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', borderRadius: 10, fontSize: 14 },
-                      formFieldLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
-                      formButtonPrimary: { background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', borderRadius: 10, fontSize: 14, fontWeight: '500' },
-                      footerActionText: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
-                      footerActionLink: { color: '#A78BFA', fontSize: 12 },
-                      identityPreviewText: { color: 'white' },
-                      identityPreviewEditButtonIcon: { color: '#A78BFA' },
-                    }
-                  }}
-                />
-              </div>
-              <div className="stats">
-                {[{n:'10k+',l:'Problems solved'},{n:'4.9★',l:'Student rating'},{n:'Free',l:'To get started'}].map(s=>(
-                  <div key={s.l} className="stat">
-                    <div className="stat-num">{s.n}</div>
-                    <div className="stat-lbl">{s.l}</div>
-                  </div>
-                ))}
-              </div>
+          {/* Right - login */}
+          <div>
+            <div className="l-card">
+              <div className="l-card-title">Start solving now</div>
+              <div className="l-card-sub">Join thousands of students</div>
+              <SignIn
+                appearance={{
+                  elements: {
+                    rootBox: { width: '100%' },
+                    card: { background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, width: '100%' },
+                    headerTitle: { display: 'none' },
+                    headerSubtitle: { display: 'none' },
+                    socialButtonsBlockButton: { background: 'white', color: '#333', borderRadius: 10, fontSize: 14, fontWeight: '500' },
+                    dividerLine: { background: 'rgba(255,255,255,0.1)' },
+                    dividerText: { color: 'rgba(255,255,255,0.3)', fontSize: 12 },
+                    formFieldInput: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', borderRadius: 10, fontSize: 14 },
+                    formFieldLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
+                    formButtonPrimary: { background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', borderRadius: 10, fontSize: 14, fontWeight: '500' },
+                    footerActionText: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+                    footerActionLink: { color: '#A78BFA', fontSize: 12 },
+                    identityPreviewText: { color: 'white' },
+                    identityPreviewEditButtonIcon: { color: '#A78BFA' },
+                  }
+                }}
+              />
+            </div>
+            <div className="l-stats">
+              {[{ n: '10k+', l: 'Problems solved' }, { n: '4.9★', l: 'Student rating' }, { n: 'Free', l: 'To get started' }].map(s => (
+                <div key={s.l} className="l-stat">
+                  <div className="l-stat-num">{s.n}</div>
+                  <div className="l-stat-lbl">{s.l}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 
-  // ── APP (logged in) ────────────────────────────────────────────────────────
+  // App (logged in)
   return (
-    <main style={{minHeight:'100dvh',display:'flex',flexDirection:'column',background:'#0F0F1A'}}>
-      <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}.step-card{animation:slideUp .3s ease forwards}`}</style>
+    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: '#0F0F1A' }}>
+      <style>{`
+        @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .step-card{animation:slideUp .3s ease forwards}
+      `}</style>
 
-      <header style={{position:'sticky',top:0,zIndex:10,background:'#0F0F1A',borderBottom:'1px solid #2A2A4A',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <div style={{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#7C3AED,#EC4899)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:600,fontSize:14}}>∑</div>
-          <span style={{fontWeight:600,color:'white',fontSize:14}}>MathSolver</span>
-          <span style={{fontSize:11,color:'#6B7280'}}>by Quiz Quests</span>
+      <header style={{ position: 'sticky', top: 0, zIndex: 10, background: '#0F0F1A', borderBottom: '1px solid #2A2A4A', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#7C3AED,#EC4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 14 }}>∑</div>
+          <span style={{ fontWeight: 600, color: 'white', fontSize: 14 }}>MathSolver</span>
+          <span style={{ fontSize: 11, color: '#6B7280' }}>by Quiz Quests</span>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {!subscribed && usesLeft !== null && (
-            <span style={{fontSize:11,color:'#9CA3AF',border:'1px solid #2A2A4A',padding:'4px 10px',borderRadius:8}}>
-              {usesLeft} free {usesLeft===1?'solve':'solves'} left
+            <span style={{ fontSize: 11, color: '#9CA3AF', border: '1px solid #2A2A4A', padding: '4px 10px', borderRadius: 8 }}>
+              {usesLeft} free {usesLeft === 1 ? 'solve' : 'solves'} left
             </span>
           )}
-          {subscribed && <span style={{fontSize:11,color:'#00D4AA',border:'1px solid rgba(0,212,170,.3)',padding:'4px 10px',borderRadius:8}}>✓ Pro</span>}
-          {(solucion||error||showPaywall) && (
-            <button onClick={limpiar} style={{fontSize:11,color:'#9CA3AF',padding:'4px 10px',borderRadius:8,border:'1px solid #2A2A4A',background:'transparent',cursor:'pointer'}}>New</button>
+          {subscribed && <span style={{ fontSize: 11, color: '#00D4AA', border: '1px solid rgba(0,212,170,.3)', padding: '4px 10px', borderRadius: 8 }}>✓ Pro</span>}
+          {(solucion || error || showPaywall) && (
+            <button onClick={limpiar} style={{ fontSize: 11, color: '#9CA3AF', padding: '4px 10px', borderRadius: 8, border: '1px solid #2A2A4A', background: 'transparent', cursor: 'pointer' }}>New</button>
           )}
-          <UserButton afterSignOutUrl="https://accounts.math.quiz-quests.com/sign-in?redirect_url=https://math.quiz-quests.com/"/>
+          <UserButton afterSignOutUrl="https://accounts.math.quiz-quests.com/sign-in?redirect_url=https://math.quiz-quests.com/" />
         </div>
       </header>
 
-      <div style={{flex:1,padding:'24px 16px',maxWidth:640,margin:'0 auto',width:'100%',display:'flex',flexDirection:'column',gap:20}}>
+      <div style={{ flex: 1, padding: '24px 16px', maxWidth: 640, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {subscribed&&!solucion&&(
-          <div style={{background:'rgba(0,212,170,.1)',border:'1px solid rgba(0,212,170,.3)',borderRadius:16,padding:12,textAlign:'center',color:'#00D4AA',fontSize:14}}>🎉 Unlimited access unlocked!</div>
+        {subscribed && !solucion && (
+          <div style={{ background: 'rgba(0,212,170,.1)', border: '1px solid rgba(0,212,170,.3)', borderRadius: 16, padding: 12, textAlign: 'center', color: '#00D4AA', fontSize: 14 }}>🎉 Unlimited access unlocked!</div>
         )}
 
-        {!solucion&&!cargando&&!showPaywall&&(
-          <div style={{textAlign:'center',paddingTop:8}}>
-            <h1 style={{fontSize:24,fontWeight:700,color:'white',lineHeight:1.3}}>
-              Solve any<br/><span style={{background:'linear-gradient(90deg,#A78BFA,#06B6D4)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}}>math problem</span>
+        {!solucion && !cargando && !showPaywall && (
+          <div style={{ textAlign: 'center', paddingTop: 8 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: 'white', lineHeight: 1.3 }}>
+              Solve any<br />
+              <span style={{ background: 'linear-gradient(90deg,#A78BFA,#06B6D4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>math problem</span>
             </h1>
-            <p style={{color:'#6B7280',fontSize:13,marginTop:8}}>Hi {user?.firstName||'there'} 👋 — type or snap a photo</p>
+            <p style={{ color: '#6B7280', fontSize: 13, marginTop: 8 }}>Hi {user?.firstName || 'there'} 👋 — type or snap a photo</p>
           </div>
         )}
 
-        {showPaywall&&(
-          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:20,paddingTop:24,textAlign:'center'}}>
-            <div style={{width:64,height:64,borderRadius:16,background:'rgba(124,58,237,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>🔒</div>
+        {showPaywall && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, paddingTop: 24, textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'rgba(124,58,237,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🔒</div>
             <div>
-              <h2 style={{fontSize:20,fontWeight:700,color:'white'}}>You've used your 3 free solves</h2>
-              <p style={{color:'#6B7280',fontSize:13,marginTop:8}}>Subscribe to keep solving unlimited problems</p>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'white' }}>You've used your 3 free solves</h2>
+              <p style={{ color: '#6B7280', fontSize: 13, marginTop: 8 }}>Subscribe to keep solving unlimited problems</p>
             </div>
-            <div style={{background:'#1A1A2E',border:'1px solid #2A2A4A',borderRadius:16,padding:20,width:'100%',maxWidth:340}}>
-              <div style={{fontSize:32,fontWeight:700,color:'white',marginBottom:4}}>$3.99<span style={{fontSize:14,fontWeight:400,color:'#6B7280'}}>/month</span></div>
-              <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:12,marginBottom:20,textAlign:'left'}}>
-                {['Unlimited math problems','Step-by-step solutions','Photo input support','All math topics'].map(f=>(
-                  <div key={f} style={{fontSize:13,color:'#D1D5DB'}}>✓ {f}</div>
+            <div style={{ background: '#1A1A2E', border: '1px solid #2A2A4A', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340 }}>
+              <div style={{ fontSize: 32, fontWeight: 700, color: 'white', marginBottom: 4 }}>$3.99<span style={{ fontSize: 14, fontWeight: 400, color: '#6B7280' }}>/month</span></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, marginBottom: 20, textAlign: 'left' }}>
+                {['Unlimited math problems', 'Step-by-step solutions', 'Photo input support', 'All math topics'].map(f => (
+                  <div key={f} style={{ fontSize: 13, color: '#D1D5DB' }}>✓ {f}</div>
                 ))}
               </div>
-              <button onClick={handleSubscribe} disabled={checkingOut} style={{width:'100%',background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:12,padding:12,fontSize:14,fontWeight:600,cursor:'pointer',opacity:checkingOut?.5:1}}>
-                {checkingOut?'Loading...':'Subscribe now →'}
+              <button onClick={handleSubscribe} disabled={checkingOut} style={{ width: '100%', background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', color: 'white', border: 'none', borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: checkingOut ? 0.5 : 1 }}>
+                {checkingOut ? 'Loading...' : 'Subscribe now →'}
               </button>
             </div>
-            <button onClick={limpiar} style={{color:'#6B7280',fontSize:12,background:'none',border:'none',cursor:'pointer'}}>← Back</button>
+            <button onClick={limpiar} style={{ color: '#6B7280', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer' }}>← Back</button>
           </div>
         )}
 
-        {!solucion&&!showPaywall&&(
-          <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="e.g. Solve x² + 5x + 6 = 0" rows={3}
-              style={{width:'100%',background:'#1A1A2E',border:'1px solid #2A2A4A',borderRadius:16,padding:'12px 16px',color:'white',fontSize:14,resize:'none',outline:'none'}}
-              onKeyDown={e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))resolver()}}
+        {!solucion && !showPaywall && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder="e.g. Solve x² + 5x + 6 = 0" rows={3}
+              style={{ width: '100%', background: '#1A1A2E', border: '1px solid #2A2A4A', borderRadius: 16, padding: '12px 16px', color: 'white', fontSize: 14, resize: 'none', outline: 'none' }}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) resolver() }}
             />
-            {!imagen?(
-              <div onClick={()=>fileRef.current?.click()} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files?.[0];if(f?.type.startsWith('image/'))handleImagen(f)}} onDragOver={e=>e.preventDefault()}
-                style={{border:'2px dashed #2A2A4A',borderRadius:16,padding:16,textAlign:'center',cursor:'pointer'}}>
-                <div style={{fontSize:24,marginBottom:4}}>📷</div>
-                <p style={{color:'#6B7280',fontSize:12}}>Tap to upload a photo of the problem</p>
-                <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)handleImagen(f)}}/>
+            {!imagen ? (
+              <div onClick={() => fileRef.current?.click()}
+                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f?.type.startsWith('image/')) handleImagen(f) }}
+                onDragOver={e => e.preventDefault()}
+                style={{ border: '2px dashed #2A2A4A', borderRadius: 16, padding: 16, textAlign: 'center', cursor: 'pointer' }}>
+                <div style={{ fontSize: 24, marginBottom: 4 }}>📷</div>
+                <p style={{ color: '#6B7280', fontSize: 12 }}>Tap to upload a photo of the problem</p>
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleImagen(f) }} />
               </div>
-            ):(
-              <div style={{position:'relative',borderRadius:16,overflow:'hidden',border:'1px solid #2A2A4A'}}>
-                <img src={imagen.preview} alt="Problem" style={{width:'100%',maxHeight:192,objectFit:'contain',background:'#1A1A2E'}}/>
-                <button onClick={()=>{setImagen(null);if(fileRef.current)fileRef.current.value=''}}
-                  style={{position:'absolute',top:8,right:8,background:'rgba(15,15,26,.8)',border:'none',borderRadius:'50%',width:28,height:28,color:'#D1D5DB',cursor:'pointer',fontSize:12}}>✕</button>
+            ) : (
+              <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', border: '1px solid #2A2A4A' }}>
+                <img src={imagen.preview} alt="Problem" style={{ width: '100%', maxHeight: 192, objectFit: 'contain', background: '#1A1A2E' }} />
+                <button onClick={() => { setImagen(null); if (fileRef.current) fileRef.current.value = '' }}
+                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(15,15,26,.8)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#D1D5DB', cursor: 'pointer', fontSize: 12 }}>✕</button>
               </div>
             )}
-            <button onClick={resolver} disabled={cargando||(!texto.trim()&&!imagen)}
-              style={{width:'100%',background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:16,padding:16,fontSize:14,fontWeight:600,cursor:'pointer',opacity:(cargando||(!texto.trim()&&!imagen))?.4:1}}>
-              {cargando?(
-                <span style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-                  <span style={{width:16,height:16,border:'2px solid rgba(255,255,255,.3)',borderTop:'2px solid white',borderRadius:'50%',animation:'spin .8s linear infinite',display:'inline-block'}}/>Solving...
+            <button onClick={resolver} disabled={cargando || (!texto.trim() && !imagen)}
+              style={{ width: '100%', background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', color: 'white', border: 'none', borderRadius: 16, padding: 16, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (cargando || (!texto.trim() && !imagen)) ? 0.4 : 1 }}>
+              {cargando ? (
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin .8s linear infinite', display: 'inline-block' }} />
+                  Solving...
                 </span>
-              ):'Solve →'}
+              ) : 'Solve →'}
             </button>
           </div>
         )}
 
-        {error&&<div style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:16,padding:16,color:'#FCA5A5',fontSize:14}}>{error}</div>}
+        {error && <div style={{ background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 16, padding: 16, color: '#FCA5A5', fontSize: 14 }}>{error}</div>}
 
-        {cargando&&(
-          <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            {[1,2,3].map(i=><div key={i} style={{background:'#1A1A2E',borderRadius:16,height:80,border:'1px solid #2A2A4A',opacity:.6}}/>)}
+        {cargando && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[1, 2, 3].map(i => <div key={i} style={{ background: '#1A1A2E', borderRadius: 16, height: 80, border: '1px solid #2A2A4A', opacity: .6 }} />)}
           </div>
         )}
 
-        {solucion&&(
-          <div ref={resultRef} style={{display:'flex',flexDirection:'column',gap:16}}>
-            <span style={{background:'rgba(124,58,237,.2)',color:'#C4B5FD',fontSize:12,fontWeight:500,padding:'4px 12px',borderRadius:20,border:'1px solid rgba(124,58,237,.3)',alignSelf:'flex-start'}}>{solucion.tipo}</span>
-            <div style={{display:'flex',flexDirection:'column',gap:12}}>
-              {solucion.pasos.map((paso,i)=>(
-                <div key={i} className="step-card" style={{background:'#1A1A2E',border:'1px solid #2A2A4A',borderRadius:16,padding:16,animationDelay:`${i*60}ms`}}>
-                  <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
-                    <span style={{flexShrink:0,width:24,height:24,borderRadius:'50%',background:'rgba(124,58,237,.2)',color:'#C4B5FD',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',marginTop:2}}>{paso.numero}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{color:'white',fontSize:14,fontWeight:600,marginBottom:4}}>{paso.titulo}</p>
-                      <div style={{color:'#D1D5DB',fontSize:13}}><MathRenderer text={paso.contenido}/></div>
+        {solucion && (
+          <div ref={resultRef} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <span style={{ background: 'rgba(124,58,237,.2)', color: '#C4B5FD', fontSize: 12, fontWeight: 500, padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(124,58,237,.3)', alignSelf: 'flex-start' }}>{solucion.tipo}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {solucion.pasos.map((paso, i) => (
+                <div key={i} className="step-card" style={{ background: '#1A1A2E', border: '1px solid #2A2A4A', borderRadius: 16, padding: 16, animationDelay: `${i * 60}ms` }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: '50%', background: 'rgba(124,58,237,.2)', color: '#C4B5FD', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>{paso.numero}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ color: 'white', fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{paso.titulo}</p>
+                      <div style={{ color: '#D1D5DB', fontSize: 13 }}><MathRenderer text={paso.contenido} /></div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{background:'rgba(0,212,170,.1)',border:'1px solid rgba(0,212,170,.3)',borderRadius:16,padding:16}}>
-              <p style={{color:'#00D4AA',fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>✓ Final Answer</p>
-              <div style={{color:'white',fontSize:16,fontWeight:500}}><MathRenderer text={solucion.respuesta}/></div>
+            <div style={{ background: 'rgba(0,212,170,.1)', border: '1px solid rgba(0,212,170,.3)', borderRadius: 16, padding: 16 }}>
+              <p style={{ color: '#00D4AA', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>✓ Final Answer</p>
+              <div style={{ color: 'white', fontSize: 16, fontWeight: 500 }}><MathRenderer text={solucion.respuesta} /></div>
             </div>
-            {solucion.consejo&&(
-              <div style={{background:'#1A1A2E',border:'1px solid #2A2A4A',borderRadius:16,padding:16}}>
-                <p style={{color:'#FCD34D',fontSize:11,fontWeight:600,marginBottom:4}}>💡 Tip</p>
-                <p style={{color:'#D1D5DB',fontSize:13}}>{solucion.consejo}</p>
+            {solucion.consejo && (
+              <div style={{ background: '#1A1A2E', border: '1px solid #2A2A4A', borderRadius: 16, padding: 16 }}>
+                <p style={{ color: '#FCD34D', fontSize: 11, fontWeight: 600, marginBottom: 4 }}>💡 Tip</p>
+                <p style={{ color: '#D1D5DB', fontSize: 13 }}>{solucion.consejo}</p>
               </div>
             )}
-            {!subscribed&&solucion.usesLeft===0&&(
-              <div style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.3)',borderRadius:16,padding:16,textAlign:'center'}}>
-                <p style={{color:'white',fontSize:14,fontWeight:600,marginBottom:4}}>That was your last free solve 🎓</p>
-                <p style={{color:'#6B7280',fontSize:12,marginBottom:12}}>Subscribe to keep solving unlimited problems</p>
+            {!subscribed && solucion.usesLeft === 0 && (
+              <div style={{ background: 'rgba(124,58,237,.1)', border: '1px solid rgba(124,58,237,.3)', borderRadius: 16, padding: 16, textAlign: 'center' }}>
+                <p style={{ color: 'white', fontSize: 14, fontWeight: 600, marginBottom: 4 }}>That was your last free solve 🎓</p>
+                <p style={{ color: '#6B7280', fontSize: 12, marginBottom: 12 }}>Subscribe for unlimited access</p>
                 <button onClick={handleSubscribe} disabled={checkingOut}
-                  style={{background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:12,padding:'10px 20px',fontSize:13,fontWeight:600,cursor:'pointer',opacity:checkingOut?.5:1}}>
-                  {checkingOut?'Loading...':'Get unlimited access — $3.99/mo'}
+                  style={{ background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', color: 'white', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: checkingOut ? 0.5 : 1 }}>
+                  {checkingOut ? 'Loading...' : 'Get unlimited — $3.99/mo'}
                 </button>
               </div>
             )}
-            <button onClick={limpiar} style={{width:'100%',border:'1px solid #2A2A4A',color:'#D1D5DB',background:'transparent',borderRadius:16,padding:16,fontSize:14,cursor:'pointer'}}>
+            <button onClick={limpiar} style={{ width: '100%', border: '1px solid #2A2A4A', color: '#D1D5DB', background: 'transparent', borderRadius: 16, padding: 16, fontSize: 14, cursor: 'pointer' }}>
               + New problem
             </button>
           </div>
