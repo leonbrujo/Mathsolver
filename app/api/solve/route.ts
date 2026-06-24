@@ -5,6 +5,22 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const ADMIN_EMAIL = 'leonbrujo@gmail.com'
 const FREE_LIMIT = 3
 
+const BLOCKED_EMAIL_DOMAINS = [
+  'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwam.com',
+  'yopmail.com', 'sharklasers.com', 'guerrillamailblock.com', 'grr.la',
+  'guerrillamail.info', 'guerrillamail.biz', 'guerrillamail.de',
+  'guerrillamail.net', 'guerrillamail.org', 'spam4.me', 'trashmail.com',
+  'trashmail.me', 'trashmail.net', 'dispostable.com', 'mailnull.com',
+  'spamgourmet.com', 'spamgourmet.net', 'spamgourmet.org', 'spamhereplease.com',
+  'maildrop.cc', 'tempr.email', 'discard.email', 'spamspot.com',
+  'fakeinbox.com', 'mailnesia.com', 'spamfree24.org', 'objectmail.com',
+  'obobbo.com', 'nospamfor.us', 'deadaddress.com', 'spammotel.com',
+  'spamevader.com', 'tempemail.net', 'tempinbox.com', 'spamavert.com',
+  'spamherelots.com', 'filzmail.com', 'getairmail.com', 'dispostable.com',
+  'mailexpire.com', 'spamfree.eu', 'throwam.com', 'tempail.com',
+  'spamgob.com', 'trashmail.at', 'trashmail.io', 'trashmail.xyz',
+]
+
 const SYSTEM_PROMPT = `You are an expert math tutor. Your job is to solve math problems step by step in a clear and educational way.
 
 RULES:
@@ -38,6 +54,12 @@ export async function POST(req: NextRequest) {
 
     const user = await currentUser()
     const email = user?.emailAddresses?.[0]?.emailAddress || ''
+
+    // Block temporary/disposable email domains
+    const emailDomain = email.split('@')[1]?.toLowerCase()
+    if (emailDomain && BLOCKED_EMAIL_DOMAINS.includes(emailDomain)) {
+      return NextResponse.json({ error: 'Temporary email addresses are not allowed.' }, { status: 403 })
+    }
 
     // Admin always free
     const isAdmin = email === ADMIN_EMAIL
