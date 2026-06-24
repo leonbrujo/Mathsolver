@@ -75,6 +75,8 @@ body {
 
 @media (max-width: 860px) {
   .l-hero { grid-template-columns: 1fr !important; gap: 40px !important; }
+  .l-hero > div:first-child { order: 1; }
+  .l-hero > div:last-child { order: 2; }
   .l-h1 { font-size: 36px !important; }
   .l-feat { grid-template-columns: 1fr !important; }
   .l-nav-hint { display: none !important; }
