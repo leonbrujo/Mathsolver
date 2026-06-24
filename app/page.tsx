@@ -58,9 +58,7 @@ export default function Home() {
 
   const resolver = async () => {
     if (!texto.trim() && !imagen) return
-    setCargando(true)
-    setError('')
-    setSolucion(null)
+    setCargando(true); setError(''); setSolucion(null)
     try {
       const res = await fetch('/api/solve', {
         method: 'POST',
@@ -70,16 +68,13 @@ export default function Home() {
       if (res.status === 403) { setShowPaywall(true); setCargando(false); return }
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      setSolucion(data)
-      setUsesLeft(data.usesLeft)
+      setSolucion(data); setUsesLeft(data.usesLeft)
       if (data.isSubscribed || data.isAdmin) setSubscribed(true)
       if (data.usesLeft === 0) setShowPaywall(true)
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
     } catch (e: any) {
       setError(e.message || 'Something went wrong. Please try again.')
-    } finally {
-      setCargando(false)
-    }
+    } finally { setCargando(false) }
   }
 
   const limpiar = () => {
@@ -89,155 +84,179 @@ export default function Home() {
   }
 
   if (!isLoaded) return (
-    <div style={{ minHeight:'100dvh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0D0D1A' }}>
-      <div style={{ width:28, height:28, border:'2px solid rgba(124,58,237,0.3)', borderTop:'2px solid #7C3AED', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0D0D1A' }}>
+      <div style={{ width: 28, height: 28, border: '2px solid rgba(124,58,237,0.3)', borderTop: '2px solid #7C3AED', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 
+  // ── LANDING PAGE ──────────────────────────────────────────────────────────
   if (!user) return (
-    <div style={{ background:'#0D0D1A', minHeight:'100dvh', color:'white', fontFamily:'var(--font-sans)', position:'relative', overflow:'hidden' }}>
+    <>
       <style>{`
+        *{box-sizing:border-box;margin:0;padding:0}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
         @keyframes spin{to{transform:rotate(360deg)}}
-        .glow1{position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(124,58,237,0.2) 0%,transparent 70%);top:-200px;left:-200px;pointer-events:none}
-        .glow2{position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(6,182,212,0.15) 0%,transparent 70%);top:-100px;right:-150px;pointer-events:none}
-        .glow3{position:absolute;width:400px;height:400px;background:radial-gradient(circle,rgba(236,72,153,0.1) 0%,transparent 70%);bottom:-100px;left:40%;pointer-events:none}
-        .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;border:1px solid}
-        .feature-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;flex:1}
-        @media(max-width:768px){
-          .hero-grid{grid-template-columns:1fr!important}
-          .features-row{flex-direction:column!important}
-          .login-col{width:100%!important}
+        body{background:#0D0D1A}
+        .landing{background:#0D0D1A;min-height:100dvh;color:#fff;font-family:system-ui,sans-serif;overflow-x:hidden;position:relative}
+        .g1{position:fixed;width:700px;height:700px;background:radial-gradient(circle,rgba(124,58,237,.22) 0%,transparent 70%);top:-250px;left:-250px;pointer-events:none;z-index:0}
+        .g2{position:fixed;width:600px;height:600px;background:radial-gradient(circle,rgba(6,182,212,.16) 0%,transparent 70%);top:-150px;right:-200px;pointer-events:none;z-index:0}
+        .g3{position:fixed;width:500px;height:500px;background:radial-gradient(circle,rgba(236,72,153,.12) 0%,transparent 70%);bottom:-150px;left:30%;pointer-events:none;z-index:0}
+        .inner{position:relative;z-index:1;max-width:1160px;margin:0 auto;padding:0 24px}
+        nav{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
+        .logo{display:flex;align-items:center;gap:10px}
+        .logo-box{width:42px;height:42px;background:linear-gradient(135deg,#7C3AED,#EC4899);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+        .logo-name{font-size:17px;font-weight:600}
+        .logo-by{font-size:11px;color:rgba(255,255,255,.4)}
+        .nav-right{display:flex;align-items:center;gap:12px}
+        .nav-hint{font-size:13px;color:rgba(255,255,255,.45)}
+        .nav-pill{background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(6,182,212,.3));border:1px solid rgba(124,58,237,.45);border-radius:20px;padding:6px 16px;font-size:12px;color:#C4B5FD;white-space:nowrap}
+        .hero{display:grid;grid-template-columns:1fr 360px;gap:56px;padding:56px 0 48px;align-items:start}
+        .tag{display:inline-flex;align-items:center;gap:7px;background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.35);border-radius:20px;padding:6px 16px;font-size:12px;color:#F9A8D4;margin-bottom:22px}
+        .tag-dot{width:6px;height:6px;background:#EC4899;border-radius:50%;animation:pulse 1.5s infinite;flex-shrink:0}
+        h1{font-size:50px;font-weight:700;line-height:1.1;margin-bottom:18px}
+        .grad{background:linear-gradient(90deg,#A78BFA,#06B6D4,#34D399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .sub{font-size:16px;color:rgba(255,255,255,.55);line-height:1.75;margin-bottom:28px}
+        .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+        .pill{display:inline-flex;align-items:center;padding:6px 14px;border-radius:20px;font-size:13px;border:1px solid;white-space:nowrap}
+        .free{display:flex;align-items:center;gap:14px;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2);border-radius:14px;padding:14px 18px;margin-bottom:36px}
+        .free-txt{font-size:14px;color:rgba(255,255,255,.7);line-height:1.5}
+        .feat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+        .fc{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px}
+        .fc-icon{font-size:24px;margin-bottom:10px}
+        .fc-title{font-size:13px;font-weight:600;margin-bottom:5px}
+        .fc-desc{font-size:12px;color:rgba(255,255,255,.4);line-height:1.6}
+        .login-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:22px;padding:28px;backdrop-filter:blur(20px)}
+        .lc-title{font-size:18px;font-weight:600;text-align:center;margin-bottom:4px}
+        .lc-sub{font-size:12px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:22px}
+        .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+        .stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 8px;text-align:center}
+        .stat-num{font-size:15px;font-weight:600}
+        .stat-lbl{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
+
+        @media(max-width:860px){
+          .hero{grid-template-columns:1fr;gap:40px}
+          h1{font-size:36px}
+          .feat{grid-template-columns:1fr}
+          .nav-hint{display:none}
+          .login-card{padding:20px}
+        }
+        @media(max-width:480px){
+          h1{font-size:30px}
+          .inner{padding:0 16px}
+          nav{padding:16px 0}
+          .hero{padding:36px 0 32px}
+          .sub{font-size:14px}
+          .free{flex-direction:column;gap:8px;text-align:center}
         }
       `}</style>
-      <div className="glow1"/><div className="glow2"/><div className="glow3"/>
-      <div style={{position:'relative',zIndex:1,maxWidth:1200,margin:'0 auto'}}>
 
-        {/* Nav */}
-        <nav style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 40px'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <div style={{width:42,height:42,background:'linear-gradient(135deg,#7C3AED,#EC4899)',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:500}}>∑</div>
+      <div className="landing">
+        <div className="g1"/><div className="g2"/><div className="g3"/>
+        <div className="inner">
+          <nav>
+            <div className="logo">
+              <div className="logo-box">∑</div>
+              <div>
+                <div className="logo-name">MathSolver AI</div>
+                <div className="logo-by">by Quiz Quests</div>
+              </div>
+            </div>
+            <div className="nav-right">
+              <div className="nav-hint">✨ 3 free solves to start</div>
+              <div className="nav-pill">Free to start</div>
+            </div>
+          </nav>
+
+          <div className="hero">
+            {/* Left column */}
             <div>
-              <div style={{fontSize:18,fontWeight:500}}>MathSolver AI</div>
-              <div style={{fontSize:11,color:'rgba(255,255,255,0.4)',marginTop:-2}}>by Quiz Quests</div>
-            </div>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:16}}>
-            <div style={{fontSize:13,color:'rgba(255,255,255,0.5)'}}>✨ 3 free solves to start</div>
-            <div style={{background:'linear-gradient(135deg,rgba(124,58,237,0.3),rgba(6,182,212,0.3))',border:'1px solid rgba(124,58,237,0.4)',borderRadius:20,padding:'6px 16px',fontSize:12,color:'#C4B5FD'}}>Free to start</div>
-          </div>
-        </nav>
+              <div className="tag"><div className="tag-dot"/>AI-powered math tutor</div>
+              <h1>Stuck on math?<br/><span className="grad">Get unstuck instantly.</span></h1>
+              <p className="sub">Type any problem or snap a photo of your homework. Get step-by-step solutions with full explanations — not just the answer.</p>
 
-        {/* Hero grid */}
-        <div className="hero-grid" style={{display:'grid',gridTemplateColumns:'1fr 380px',gap:60,padding:'60px 40px 40px',alignItems:'center'}}>
+              <div className="pills">
+                {[
+                  {l:'Algebra',bg:'rgba(124,58,237,.12)',b:'rgba(124,58,237,.4)',c:'#C4B5FD'},
+                  {l:'Calculus',bg:'rgba(6,182,212,.12)',b:'rgba(6,182,212,.4)',c:'#67E8F9'},
+                  {l:'Geometry',bg:'rgba(52,211,153,.12)',b:'rgba(52,211,153,.4)',c:'#6EE7B7'},
+                  {l:'Arithmetic',bg:'rgba(236,72,153,.12)',b:'rgba(236,72,153,.4)',c:'#F9A8D4'},
+                  {l:'Statistics',bg:'rgba(251,191,36,.12)',b:'rgba(251,191,36,.4)',c:'#FCD34D'},
+                  {l:'Trigonometry',bg:'rgba(99,102,241,.12)',b:'rgba(99,102,241,.4)',c:'#A5B4FC'},
+                ].map(p => <div key={p.l} className="pill" style={{background:p.bg,borderColor:p.b,color:p.c}}>{p.l}</div>)}
+              </div>
 
-          {/* Left */}
-          <div>
-            <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'rgba(236,72,153,0.15)',border:'1px solid rgba(236,72,153,0.35)',borderRadius:20,padding:'6px 16px',fontSize:12,color:'#F9A8D4',marginBottom:24}}>
-              <div style={{width:6,height:6,background:'#EC4899',borderRadius:'50%',animation:'pulse 1.5s infinite'}}/>
-              AI-powered math tutor
-            </div>
-            <h1 style={{fontSize:52,fontWeight:500,lineHeight:1.1,marginBottom:20}}>
-              Stuck on math?<br/>
-              <span style={{background:'linear-gradient(90deg,#A78BFA,#06B6D4,#34D399)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}}>
-                Get unstuck instantly.
-              </span>
-            </h1>
-            <p style={{fontSize:17,color:'rgba(255,255,255,0.55)',lineHeight:1.7,marginBottom:32,maxWidth:520}}>
-              Type any problem or snap a photo of your homework. Get step-by-step solutions with full explanations — not just the answer.
-            </p>
+              <div className="free">
+                <div style={{fontSize:28,flexShrink:0}}>🎁</div>
+                <div className="free-txt">
+                  <span style={{color:'#34D399',fontWeight:600}}>3 free solves</span> when you sign up — no credit card needed. Then <span style={{color:'#34D399',fontWeight:600}}>$3.99/month</span> for unlimited access.
+                </div>
+              </div>
 
-            <div style={{display:'flex',flexWrap:'wrap',gap:10,marginBottom:32}}>
-              {[
-                {label:'Algebra',bg:'rgba(124,58,237,0.12)',border:'rgba(124,58,237,0.35)',text:'#C4B5FD'},
-                {label:'Calculus',bg:'rgba(6,182,212,0.12)',border:'rgba(6,182,212,0.35)',text:'#67E8F9'},
-                {label:'Geometry',bg:'rgba(52,211,153,0.12)',border:'rgba(52,211,153,0.35)',text:'#6EE7B7'},
-                {label:'Arithmetic',bg:'rgba(236,72,153,0.12)',border:'rgba(236,72,153,0.35)',text:'#F9A8D4'},
-                {label:'Statistics',bg:'rgba(251,191,36,0.12)',border:'rgba(251,191,36,0.35)',text:'#FCD34D'},
-                {label:'Trigonometry',bg:'rgba(99,102,241,0.12)',border:'rgba(99,102,241,0.35)',text:'#A5B4FC'},
-              ].map(p=>(
-                <div key={p.label} className="pill" style={{background:p.bg,borderColor:p.border,color:p.text,fontSize:13}}>{p.label}</div>
-              ))}
-            </div>
-
-            <div style={{display:'flex',alignItems:'center',gap:14,background:'rgba(52,211,153,0.08)',border:'1px solid rgba(52,211,153,0.2)',borderRadius:14,padding:'14px 20px',marginBottom:40}}>
-              <div style={{fontSize:26}}>🎁</div>
-              <div style={{fontSize:14,color:'rgba(255,255,255,0.7)'}}>
-                <span style={{color:'#34D399',fontWeight:500}}>3 free solves</span> when you sign up — no credit card needed. Then <span style={{color:'#34D399',fontWeight:500}}>$3.99/month</span> for unlimited access.
+              <div className="feat">
+                {[
+                  {i:'📐',t:'Step-by-step',d:'Every problem broken into clear numbered steps with full explanations.'},
+                  {i:'📷',t:'Snap a photo',d:'Point your camera at any problem — textbook or handwritten notes.'},
+                  {i:'💡',t:'Tips to learn',d:'Each solution ends with a tip so you remember the concept next time.'},
+                ].map(f => (
+                  <div key={f.t} className="fc">
+                    <div className="fc-icon">{f.i}</div>
+                    <div className="fc-title">{f.t}</div>
+                    <div className="fc-desc">{f.d}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Feature cards */}
-            <div className="features-row" style={{display:'flex',gap:14}}>
-              {[
-                {icon:'📐',title:'Step-by-step',desc:'Every problem broken into clear numbered steps with full explanations.'},
-                {icon:'📷',title:'Snap a photo',desc:'Point your camera at any problem — textbook or handwritten notes.'},
-                {icon:'💡',title:'Tips to learn',desc:'Each solution includes a tip so you remember the concept next time.'},
-              ].map(f=>(
-                <div key={f.title} className="feature-card">
-                  <div style={{fontSize:26,marginBottom:10}}>{f.icon}</div>
-                  <div style={{fontSize:14,fontWeight:500,marginBottom:6}}>{f.title}</div>
-                  <div style={{fontSize:12,color:'rgba(255,255,255,0.45)',lineHeight:1.6}}>{f.desc}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right - login */}
-          <div className="login-col" style={{width:380}}>
-            <div style={{background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:24,padding:32,backdropFilter:'blur(20px)'}}>
-              <div style={{fontSize:20,fontWeight:500,textAlign:'center',marginBottom:6}}>Start solving now</div>
-              <div style={{fontSize:13,color:'rgba(255,255,255,0.4)',textAlign:'center',marginBottom:24}}>Join thousands of students</div>
-              <SignIn
-                appearance={{
-                  elements:{
-                    rootBox:{width:'100%'},
-                    card:{background:'transparent',border:'none',boxShadow:'none',padding:0,width:'100%'},
-                    headerTitle:{display:'none'},
-                    headerSubtitle:{display:'none'},
-                    socialButtonsBlockButton:{background:'white',color:'#333',borderRadius:10,fontSize:14,fontWeight:'500',padding:'11px 0'},
-                    dividerLine:{background:'rgba(255,255,255,0.1)'},
-                    dividerText:{color:'rgba(255,255,255,0.3)',fontSize:12},
-                    formFieldInput:{background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.12)',color:'white',borderRadius:10,fontSize:14},
-                    formFieldLabel:{color:'rgba(255,255,255,0.6)',fontSize:13},
-                    formButtonPrimary:{background:'linear-gradient(135deg,#7C3AED,#06B6D4)',borderRadius:10,fontSize:14,fontWeight:'500',padding:'12px 0'},
-                    footerActionText:{color:'rgba(255,255,255,0.4)',fontSize:12},
-                    footerActionLink:{color:'#A78BFA',fontSize:12},
-                    identityPreviewText:{color:'white'},
-                    identityPreviewEditButtonIcon:{color:'#A78BFA'},
-                  }
-                }}
-              />
-            </div>
-
-            {/* Social proof */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginTop:20}}>
-              {[
-                {num:'10k+',label:'Problems solved'},
-                {num:'4.9★',label:'Student rating'},
-                {num:'Free',label:'To get started'},
-              ].map(s=>(
-                <div key={s.label} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:12,padding:'12px 8px',textAlign:'center'}}>
-                  <div style={{fontSize:16,fontWeight:500,color:'white'}}>{s.num}</div>
-                  <div style={{fontSize:10,color:'rgba(255,255,255,0.4)',marginTop:2}}>{s.label}</div>
-                </div>
-              ))}
+            {/* Right column — login */}
+            <div>
+              <div className="login-card">
+                <div className="lc-title">Start solving now</div>
+                <div className="lc-sub">Join thousands of students</div>
+                <SignIn
+                  appearance={{
+                    elements: {
+                      rootBox: { width: '100%' },
+                      card: { background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, width: '100%' },
+                      headerTitle: { display: 'none' },
+                      headerSubtitle: { display: 'none' },
+                      socialButtonsBlockButton: { background: 'white', color: '#333', borderRadius: 10, fontSize: 14, fontWeight: '500' },
+                      dividerLine: { background: 'rgba(255,255,255,0.1)' },
+                      dividerText: { color: 'rgba(255,255,255,0.3)', fontSize: 12 },
+                      formFieldInput: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', borderRadius: 10, fontSize: 14 },
+                      formFieldLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
+                      formButtonPrimary: { background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', borderRadius: 10, fontSize: 14, fontWeight: '500' },
+                      footerActionText: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+                      footerActionLink: { color: '#A78BFA', fontSize: 12 },
+                      identityPreviewText: { color: 'white' },
+                      identityPreviewEditButtonIcon: { color: '#A78BFA' },
+                    }
+                  }}
+                />
+              </div>
+              <div className="stats">
+                {[{n:'10k+',l:'Problems solved'},{n:'4.9★',l:'Student rating'},{n:'Free',l:'To get started'}].map(s=>(
+                  <div key={s.l} className="stat">
+                    <div className="stat-num">{s.n}</div>
+                    <div className="stat-lbl">{s.l}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 
-  // App for logged-in users
+  // ── APP (logged in) ────────────────────────────────────────────────────────
   return (
     <main style={{minHeight:'100dvh',display:'flex',flexDirection:'column',background:'#0F0F1A'}}>
-      <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}.step-card{animation:slideUp 0.3s ease forwards}`}</style>
+      <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}.step-card{animation:slideUp .3s ease forwards}`}</style>
 
       <header style={{position:'sticky',top:0,zIndex:10,background:'#0F0F1A',borderBottom:'1px solid #2A2A4A',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <div style={{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#7C3AED,#EC4899)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:500,fontSize:14}}>∑</div>
+          <div style={{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#7C3AED,#EC4899)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:600,fontSize:14}}>∑</div>
           <span style={{fontWeight:600,color:'white',fontSize:14}}>MathSolver</span>
           <span style={{fontSize:11,color:'#6B7280'}}>by Quiz Quests</span>
         </div>
@@ -247,7 +266,7 @@ export default function Home() {
               {usesLeft} free {usesLeft===1?'solve':'solves'} left
             </span>
           )}
-          {subscribed && <span style={{fontSize:11,color:'#00D4AA',border:'1px solid rgba(0,212,170,0.3)',padding:'4px 10px',borderRadius:8}}>✓ Pro</span>}
+          {subscribed && <span style={{fontSize:11,color:'#00D4AA',border:'1px solid rgba(0,212,170,.3)',padding:'4px 10px',borderRadius:8}}>✓ Pro</span>}
           {(solucion||error||showPaywall) && (
             <button onClick={limpiar} style={{fontSize:11,color:'#9CA3AF',padding:'4px 10px',borderRadius:8,border:'1px solid #2A2A4A',background:'transparent',cursor:'pointer'}}>New</button>
           )}
@@ -258,9 +277,7 @@ export default function Home() {
       <div style={{flex:1,padding:'24px 16px',maxWidth:640,margin:'0 auto',width:'100%',display:'flex',flexDirection:'column',gap:20}}>
 
         {subscribed&&!solucion&&(
-          <div style={{background:'rgba(0,212,170,0.1)',border:'1px solid rgba(0,212,170,0.3)',borderRadius:16,padding:12,textAlign:'center',color:'#00D4AA',fontSize:14}}>
-            🎉 Unlimited access unlocked!
-          </div>
+          <div style={{background:'rgba(0,212,170,.1)',border:'1px solid rgba(0,212,170,.3)',borderRadius:16,padding:12,textAlign:'center',color:'#00D4AA',fontSize:14}}>🎉 Unlimited access unlocked!</div>
         )}
 
         {!solucion&&!cargando&&!showPaywall&&(
@@ -274,7 +291,7 @@ export default function Home() {
 
         {showPaywall&&(
           <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:20,paddingTop:24,textAlign:'center'}}>
-            <div style={{width:64,height:64,borderRadius:16,background:'rgba(124,58,237,0.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>🔒</div>
+            <div style={{width:64,height:64,borderRadius:16,background:'rgba(124,58,237,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>🔒</div>
             <div>
               <h2 style={{fontSize:20,fontWeight:700,color:'white'}}>You've used your 3 free solves</h2>
               <p style={{color:'#6B7280',fontSize:13,marginTop:8}}>Subscribe to keep solving unlimited problems</p>
@@ -286,7 +303,7 @@ export default function Home() {
                   <div key={f} style={{fontSize:13,color:'#D1D5DB'}}>✓ {f}</div>
                 ))}
               </div>
-              <button onClick={handleSubscribe} disabled={checkingOut} style={{width:'100%',background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:12,padding:12,fontSize:14,fontWeight:600,cursor:'pointer',opacity:checkingOut?0.5:1}}>
+              <button onClick={handleSubscribe} disabled={checkingOut} style={{width:'100%',background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:12,padding:12,fontSize:14,fontWeight:600,cursor:'pointer',opacity:checkingOut?.5:1}}>
                 {checkingOut?'Loading...':'Subscribe now →'}
               </button>
             </div>
@@ -311,37 +328,36 @@ export default function Home() {
               <div style={{position:'relative',borderRadius:16,overflow:'hidden',border:'1px solid #2A2A4A'}}>
                 <img src={imagen.preview} alt="Problem" style={{width:'100%',maxHeight:192,objectFit:'contain',background:'#1A1A2E'}}/>
                 <button onClick={()=>{setImagen(null);if(fileRef.current)fileRef.current.value=''}}
-                  style={{position:'absolute',top:8,right:8,background:'rgba(15,15,26,0.8)',border:'none',borderRadius:'50%',width:28,height:28,color:'#D1D5DB',cursor:'pointer',fontSize:12}}>✕</button>
+                  style={{position:'absolute',top:8,right:8,background:'rgba(15,15,26,.8)',border:'none',borderRadius:'50%',width:28,height:28,color:'#D1D5DB',cursor:'pointer',fontSize:12}}>✕</button>
               </div>
             )}
             <button onClick={resolver} disabled={cargando||(!texto.trim()&&!imagen)}
-              style={{width:'100%',background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:16,padding:16,fontSize:14,fontWeight:600,cursor:'pointer',opacity:(cargando||(!texto.trim()&&!imagen))?0.4:1}}>
+              style={{width:'100%',background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:16,padding:16,fontSize:14,fontWeight:600,cursor:'pointer',opacity:(cargando||(!texto.trim()&&!imagen))?.4:1}}>
               {cargando?(
                 <span style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-                  <span style={{width:16,height:16,border:'2px solid rgba(255,255,255,0.3)',borderTop:'2px solid white',borderRadius:'50%',animation:'spin 0.8s linear infinite',display:'inline-block'}}/>
-                  Solving...
+                  <span style={{width:16,height:16,border:'2px solid rgba(255,255,255,.3)',borderTop:'2px solid white',borderRadius:'50%',animation:'spin .8s linear infinite',display:'inline-block'}}/>Solving...
                 </span>
               ):'Solve →'}
             </button>
           </div>
         )}
 
-        {error&&<div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:16,padding:16,color:'#FCA5A5',fontSize:14}}>{error}</div>}
+        {error&&<div style={{background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:16,padding:16,color:'#FCA5A5',fontSize:14}}>{error}</div>}
 
         {cargando&&(
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            {[1,2,3].map(i=><div key={i} style={{background:'#1A1A2E',borderRadius:16,height:80,border:'1px solid #2A2A4A',opacity:0.6}}/>)}
+            {[1,2,3].map(i=><div key={i} style={{background:'#1A1A2E',borderRadius:16,height:80,border:'1px solid #2A2A4A',opacity:.6}}/>)}
           </div>
         )}
 
         {solucion&&(
           <div ref={resultRef} style={{display:'flex',flexDirection:'column',gap:16}}>
-            <span style={{background:'rgba(124,58,237,0.2)',color:'#C4B5FD',fontSize:12,fontWeight:500,padding:'4px 12px',borderRadius:20,border:'1px solid rgba(124,58,237,0.3)',alignSelf:'flex-start'}}>{solucion.tipo}</span>
+            <span style={{background:'rgba(124,58,237,.2)',color:'#C4B5FD',fontSize:12,fontWeight:500,padding:'4px 12px',borderRadius:20,border:'1px solid rgba(124,58,237,.3)',alignSelf:'flex-start'}}>{solucion.tipo}</span>
             <div style={{display:'flex',flexDirection:'column',gap:12}}>
               {solucion.pasos.map((paso,i)=>(
                 <div key={i} className="step-card" style={{background:'#1A1A2E',border:'1px solid #2A2A4A',borderRadius:16,padding:16,animationDelay:`${i*60}ms`}}>
                   <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
-                    <span style={{flexShrink:0,width:24,height:24,borderRadius:'50%',background:'rgba(124,58,237,0.2)',color:'#C4B5FD',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',marginTop:2}}>{paso.numero}</span>
+                    <span style={{flexShrink:0,width:24,height:24,borderRadius:'50%',background:'rgba(124,58,237,.2)',color:'#C4B5FD',fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',marginTop:2}}>{paso.numero}</span>
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{color:'white',fontSize:14,fontWeight:600,marginBottom:4}}>{paso.titulo}</p>
                       <div style={{color:'#D1D5DB',fontSize:13}}><MathRenderer text={paso.contenido}/></div>
@@ -350,7 +366,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <div style={{background:'rgba(0,212,170,0.1)',border:'1px solid rgba(0,212,170,0.3)',borderRadius:16,padding:16}}>
+            <div style={{background:'rgba(0,212,170,.1)',border:'1px solid rgba(0,212,170,.3)',borderRadius:16,padding:16}}>
               <p style={{color:'#00D4AA',fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>✓ Final Answer</p>
               <div style={{color:'white',fontSize:16,fontWeight:500}}><MathRenderer text={solucion.respuesta}/></div>
             </div>
@@ -361,11 +377,11 @@ export default function Home() {
               </div>
             )}
             {!subscribed&&solucion.usesLeft===0&&(
-              <div style={{background:'rgba(124,58,237,0.1)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:16,padding:16,textAlign:'center'}}>
+              <div style={{background:'rgba(124,58,237,.1)',border:'1px solid rgba(124,58,237,.3)',borderRadius:16,padding:16,textAlign:'center'}}>
                 <p style={{color:'white',fontSize:14,fontWeight:600,marginBottom:4}}>That was your last free solve 🎓</p>
                 <p style={{color:'#6B7280',fontSize:12,marginBottom:12}}>Subscribe to keep solving unlimited problems</p>
                 <button onClick={handleSubscribe} disabled={checkingOut}
-                  style={{background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:12,padding:'10px 20px',fontSize:13,fontWeight:600,cursor:'pointer',opacity:checkingOut?0.5:1}}>
+                  style={{background:'linear-gradient(135deg,#7C3AED,#06B6D4)',color:'white',border:'none',borderRadius:12,padding:'10px 20px',fontSize:13,fontWeight:600,cursor:'pointer',opacity:checkingOut?.5:1}}>
                   {checkingOut?'Loading...':'Get unlimited access — $3.99/mo'}
                 </button>
               </div>
