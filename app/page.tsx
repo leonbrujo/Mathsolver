@@ -14,21 +14,153 @@ interface Solucion {
 
 const SIGNIN_APPEARANCE = {
   elements: {
-    rootBox: { width: '100%' },
-    card: { background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, width: '100%' },
-    headerTitle: { display: 'none' },
-    headerSubtitle: { display: 'none' },
-    socialButtonsBlockButton: { background: 'white', color: '#333', borderRadius: '10px', fontSize: '14px', fontWeight: '500' },
-    dividerLine: { background: 'rgba(255,255,255,0.1)' },
-    dividerText: { color: 'rgba(255,255,255,0.3)', fontSize: '12px' },
-    formFieldInput: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', borderRadius: '10px', fontSize: '14px' },
-    formFieldLabel: { color: 'rgba(255,255,255,0.6)', fontSize: '13px' },
-    formButtonPrimary: { background: 'linear-gradient(135deg,#7C3AED,#06B6D4)', borderRadius: '10px', fontSize: '14px', fontWeight: '500' },
-    footerActionText: { color: 'rgba(255,255,255,0.4)', fontSize: '12px' },
-    footerActionLink: { color: '#A78BFA', fontSize: '12px' },
-    identityPreviewText: { color: 'white' },
-    identityPreviewEditButtonIcon: { color: '#A78BFA' },
-  }
+    rootBox: {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+    },
+
+    cardBox: {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+      background: 'transparent',
+      boxShadow: 'none',
+      border: 'none',
+    },
+
+    card: {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+      background: 'transparent',
+      border: 'none',
+      boxShadow: 'none',
+      padding: 0,
+    },
+
+    main: {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+      background: 'transparent',
+    },
+
+    header: {
+      display: 'none',
+    },
+
+    headerTitle: {
+      display: 'none',
+    },
+
+    headerSubtitle: {
+      display: 'none',
+    },
+
+    socialButtons: {
+      width: '100%',
+      maxWidth: '100%',
+    },
+
+    socialButtonsBlockButton: {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+      background: 'white',
+      color: '#333',
+      borderRadius: '10px',
+      fontSize: '14px',
+      fontWeight: '500',
+      height: '44px',
+    },
+
+    dividerRow: {
+      width: '100%',
+      maxWidth: '100%',
+    },
+
+    dividerLine: {
+      background: 'rgba(255,255,255,0.1)',
+    },
+
+    dividerText: {
+      color: 'rgba(255,255,255,0.3)',
+      fontSize: '12px',
+    },
+
+    form: {
+      width: '100%',
+      maxWidth: '100%',
+    },
+
+    formField: {
+      width: '100%',
+      maxWidth: '100%',
+    },
+
+    formFieldInput: {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+      background: 'rgba(255,255,255,0.06)',
+      border: '1px solid rgba(255,255,255,0.12)',
+      color: 'white',
+      borderRadius: '10px',
+      fontSize: '14px',
+      height: '44px',
+    },
+
+    formFieldLabel: {
+      color: 'rgba(255,255,255,0.6)',
+      fontSize: '13px',
+    },
+
+    formButtonPrimary: {
+      width: '100%',
+      maxWidth: '100%',
+      minWidth: 0,
+      background: 'linear-gradient(135deg,#7C3AED,#06B6D4)',
+      borderRadius: '10px',
+      fontSize: '14px',
+      fontWeight: '500',
+      height: '44px',
+    },
+
+    footer: {
+      width: '100%',
+      maxWidth: '100%',
+      background: 'transparent',
+      borderTop: '1px solid rgba(255,255,255,0.08)',
+      boxShadow: 'none',
+    },
+
+    footerAction: {
+      background: 'transparent',
+    },
+
+    footerPages: {
+      background: 'transparent',
+    },
+
+    footerActionText: {
+      color: 'rgba(255,255,255,0.4)',
+      fontSize: '12px',
+    },
+
+    footerActionLink: {
+      color: '#A78BFA',
+      fontSize: '12px',
+    },
+
+    identityPreviewText: {
+      color: 'white',
+    },
+
+    identityPreviewEditButtonIcon: {
+      color: '#A78BFA',
+    },
+  },
 }
 
 export default function Home() {
