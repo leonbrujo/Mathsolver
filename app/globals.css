@@ -194,3 +194,90 @@ body {
   }
   .lp-features { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ═══ Clerk mobile overflow fix ═══════════════════════════════════════════ */
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.lp {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.lp-container {
+  width: 100%;
+  max-width: 1160px;
+  overflow-x: hidden;
+}
+
+.lp-login-wrap,
+.lp-card,
+.lp-clerk {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.lp-card {
+  overflow: hidden;
+}
+
+/* Clerk sometimes keeps internal fixed/min widths */
+.lp-clerk .cl-rootBox,
+.lp-clerk .cl-cardBox,
+.lp-clerk .cl-card,
+.lp-clerk .cl-main,
+.lp-clerk .cl-form,
+.lp-clerk .cl-formField,
+.lp-clerk .cl-formFieldInput,
+.lp-clerk .cl-formButtonPrimary,
+.lp-clerk .cl-socialButtons,
+.lp-clerk .cl-socialButtonsBlockButton {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Remove Clerk white card/footer backgrounds */
+.lp-clerk .cl-cardBox,
+.lp-clerk .cl-card,
+.lp-clerk .cl-main,
+.lp-clerk .cl-footer,
+.lp-clerk .cl-footerAction,
+.lp-clerk .cl-footerPages {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+/* Keep the sign-up/footer area dark instead of white */
+.lp-clerk .cl-footer {
+  margin-top: 14px !important;
+  border-top: 1px solid rgba(255,255,255,.08) !important;
+}
+
+/* Mobile-specific tightening */
+@media (max-width: 899px) {
+  .lp-container {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .lp-card {
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .lp-clerk .cl-socialButtonsBlockButton,
+  .lp-clerk .cl-formButtonPrimary,
+  .lp-clerk .cl-formFieldInput {
+    height: 44px !important;
+  }
+}
