@@ -318,8 +318,6 @@ export default function Home() {
               <div className="lp-clerk">
                 <SignIn
                   appearance={SIGNIN_APPEARANCE}
-                  routing="path"
-                  path="/sign-in"
                   signUpUrl="/sign-up"
                   fallbackRedirectUrl="/"
                   forceRedirectUrl="/"
