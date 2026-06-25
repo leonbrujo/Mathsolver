@@ -316,7 +316,14 @@ export default function Home() {
               <div className="lp-card-title">Start solving now</div>
               <div className="lp-card-sub">Join thousands of students</div>
               <div className="lp-clerk">
-                <SignIn appearance={SIGNIN_APPEARANCE} />
+                <SignIn
+                  appearance={SIGNIN_APPEARANCE}
+                  routing="path"
+                  path="/sign-in"
+                  signUpUrl="/sign-up"
+                  fallbackRedirectUrl="/"
+                  forceRedirectUrl="/"
+                />
               </div>
             </div>
             <div className="lp-stats">
