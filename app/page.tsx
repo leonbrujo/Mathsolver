@@ -310,20 +310,74 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Login (second on mobile, right on desktop) */}
-          <div className="lp-login-wrap">
-            <div className="lp-card">
-              <div className="lp-card-title">Start solving now</div>
-              <div className="lp-card-sub">Join thousands of students</div>
+        {/* Login (second on mobile, right on desktop) */}
+        <div className="lp-login-wrap">
+          <div className="lp-card">
+            <div className="lp-card-title">Start solving now</div>
+            <div className="lp-card-sub">Join thousands of students</div>
               <div className="lp-clerk">
-                <SignIn
-                  appearance={SIGNIN_APPEARANCE}
-                  signUpUrl="/sign-up"
-                  fallbackRedirectUrl="/"
-                  forceRedirectUrl="/"
-                />
+                <a
+                  href="/sign-up"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                    height: 46,
+                    background: 'white',
+                    color: '#333',
+                    borderRadius: 12,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    marginBottom: 12,
+                  }}
+                >
+                  Start free with Google
+                </a>
+          
+                <a
+                  href="/sign-up"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                    height: 46,
+                    background: 'linear-gradient(135deg,#7C3AED,#06B6D4)',
+                    color: 'white',
+                    borderRadius: 12,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    marginBottom: 16,
+                  }}
+                >
+                  Create free account →
+                </a>
+          
+                <div
+                  style={{
+                    textAlign: 'center',
+                    fontSize: 12,
+                    color: 'rgba(255,255,255,0.45)',
+                  }}
+                >
+                  Already have an account?{' '}
+                  <a
+                    href="/sign-in"
+                    style={{
+                      color: '#A78BFA',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Sign in
+                  </a>
+                </div>
               </div>
             </div>
+          
             <div className="lp-stats">
               {[{ n: '10k+', l: 'Problems solved' }, { n: '4.9★', l: 'Student rating' }, { n: 'Free', l: 'To get started' }].map(s => (
                 <div key={s.l} className="lp-stat">
