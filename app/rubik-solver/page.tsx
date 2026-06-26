@@ -1,372 +1,645 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import * as THREE from "three";
 
-const SOLVED_STATE: Record<string, string> = {
+// ── CUBE LOGIC ────────────────────────────────────────────────────────────────
+const SOLVED: Record<string, string> = {
   U: "WWWWWWWWW", D: "YYYYYYYYY", F: "RRRRRRRRR",
   B: "OOOOOOOOO", L: "BBBBBBBBB", R: "GGGGGGGGG",
 };
+const COLOR_HEX: Record<string, number> = {
+  W: 0xf5f5f0, Y: 0xffd700, R: 0xe8251a,
+  O: 0xff6b1a, B: 0x1a4fe8, G: 0x1aae3e,
+};
+const STICKER_COLOR: Record<string, string> = {
+  W: "#F5F5F0", Y: "#FFD700", R: "#E8251A",
+  O: "#FF6B1A", B: "#1A4FE8", G: "#1AAE3E",
+};
 
-function rotateCW(face: string) {
-  const f = face.split("");
-  return [f[6],f[3],f[0],f[7],f[4],f[1],f[8],f[5],f[2]].join("");
-}
-function rotateCCW(face: string) {
-  const f = face.split("");
-  return [f[2],f[5],f[8],f[1],f[4],f[7],f[0],f[3],f[6]].join("");
-}
+function rotateCW(f: string) { const a=f.split(""); return [a[6],a[3],a[0],a[7],a[4],a[1],a[8],a[5],a[2]].join(""); }
+function rotateCCW(f: string) { const a=f.split(""); return [a[2],a[5],a[8],a[1],a[4],a[7],a[0],a[3],a[6]].join(""); }
 
-function applyMove(state: Record<string,string>, move: string): Record<string,string> {
-  const u=state.U.split(""),d=state.D.split(""),f=state.F.split(""),
-        b=state.B.split(""),l=state.L.split(""),r=state.R.split("");
-  const s=(a:string[])=>a.join("");
-  switch(move){
-    case "U":  { const t=[f[0],f[1],f[2]];[f[0],f[1],f[2]]=[r[0],r[1],r[2]];[r[0],r[1],r[2]]=[b[0],b[1],b[2]];[b[0],b[1],b[2]]=[l[0],l[1],l[2]];[l[0],l[1],l[2]]=t; return {U:rotateCW(state.U),D:s(d),F:s(f),B:s(b),L:s(l),R:s(r)}; }
-    case "U'": { const t=[f[0],f[1],f[2]];[f[0],f[1],f[2]]=[l[0],l[1],l[2]];[l[0],l[1],l[2]]=[b[0],b[1],b[2]];[b[0],b[1],b[2]]=[r[0],r[1],r[2]];[r[0],r[1],r[2]]=t; return {U:rotateCCW(state.U),D:s(d),F:s(f),B:s(b),L:s(l),R:s(r)}; }
-    case "D":  { const t=[f[6],f[7],f[8]];[f[6],f[7],f[8]]=[l[6],l[7],l[8]];[l[6],l[7],l[8]]=[b[6],b[7],b[8]];[b[6],b[7],b[8]]=[r[6],r[7],r[8]];[r[6],r[7],r[8]]=t; return {U:s(u),D:rotateCW(state.D),F:s(f),B:s(b),L:s(l),R:s(r)}; }
-    case "D'": { const t=[f[6],f[7],f[8]];[f[6],f[7],f[8]]=[r[6],r[7],r[8]];[r[6],r[7],r[8]]=[b[6],b[7],b[8]];[b[6],b[7],b[8]]=[l[6],l[7],l[8]];[l[6],l[7],l[8]]=t; return {U:s(u),D:rotateCCW(state.D),F:s(f),B:s(b),L:s(l),R:s(r)}; }
-    case "R":  { const t=[u[2],u[5],u[8]];[u[2],u[5],u[8]]=[f[2],f[5],f[8]];[f[2],f[5],f[8]]=[d[2],d[5],d[8]];[d[2],d[5],d[8]]=[b[6],b[3],b[0]];[b[6],b[3],b[0]]=t; return {U:s(u),D:s(d),F:s(f),B:s(b),L:s(l),R:rotateCW(state.R)}; }
-    case "R'": { const t=[u[2],u[5],u[8]];[u[2],u[5],u[8]]=[b[6],b[3],b[0]];[b[6],b[3],b[0]]=[d[2],d[5],d[8]];[d[2],d[5],d[8]]=[f[2],f[5],f[8]];[f[2],f[5],f[8]]=t; return {U:s(u),D:s(d),F:s(f),B:s(b),L:s(l),R:rotateCCW(state.R)}; }
-    case "L":  { const t=[u[0],u[3],u[6]];[u[0],u[3],u[6]]=[b[8],b[5],b[2]];[b[8],b[5],b[2]]=[d[0],d[3],d[6]];[d[0],d[3],d[6]]=[f[0],f[3],f[6]];[f[0],f[3],f[6]]=t; return {U:s(u),D:s(d),F:s(f),B:s(b),L:rotateCW(state.L),R:s(r)}; }
-    case "L'": { const t=[u[0],u[3],u[6]];[u[0],u[3],u[6]]=[f[0],f[3],f[6]];[f[0],f[3],f[6]]=[d[0],d[3],d[6]];[d[0],d[3],d[6]]=[b[8],b[5],b[2]];[b[8],b[5],b[2]]=t; return {U:s(u),D:s(d),F:s(f),B:s(b),L:rotateCCW(state.L),R:s(r)}; }
-    case "F":  { const t=[u[6],u[7],u[8]];[u[6],u[7],u[8]]=[l[8],l[5],l[2]];[l[8],l[5],l[2]]=[d[2],d[1],d[0]];[d[2],d[1],d[0]]=[r[0],r[3],r[6]];[r[0],r[3],r[6]]=t; return {U:s(u),D:s(d),F:rotateCW(state.F),B:s(b),L:s(l),R:s(r)}; }
-    case "F'": { const t=[u[6],u[7],u[8]];[u[6],u[7],u[8]]=[r[0],r[3],r[6]];[r[0],r[3],r[6]]=[d[2],d[1],d[0]];[d[2],d[1],d[0]]=[l[8],l[5],l[2]];[l[8],l[5],l[2]]=t; return {U:s(u),D:s(d),F:rotateCCW(state.F),B:s(b),L:s(l),R:s(r)}; }
-    case "B":  { const t=[u[0],u[1],u[2]];[u[0],u[1],u[2]]=[r[2],r[5],r[8]];[r[2],r[5],r[8]]=[d[8],d[7],d[6]];[d[8],d[7],d[6]]=[l[0],l[3],l[6]];[l[0],l[3],l[6]]=t; return {U:s(u),D:s(d),F:s(f),B:rotateCW(state.B),L:s(l),R:s(r)}; }
-    case "B'": { const t=[u[0],u[1],u[2]];[u[0],u[1],u[2]]=[l[0],l[3],l[6]];[l[0],l[3],l[6]]=[d[8],d[7],d[6]];[d[8],d[7],d[6]]=[r[2],r[5],r[8]];[r[2],r[5],r[8]]=t; return {U:s(u),D:s(d),F:s(f),B:rotateCCW(state.B),L:s(l),R:s(r)}; }
-    default: return state;
+function applyMove(st: Record<string,string>, mv: string): Record<string,string> {
+  const u=st.U.split(""),d=st.D.split(""),f=st.F.split(""),b=st.B.split(""),l=st.L.split(""),r=st.R.split("");
+  const j=(a:string[])=>a.join("");
+  switch(mv){
+    case"U": {const t=[f[0],f[1],f[2]];[f[0],f[1],f[2]]=[r[0],r[1],r[2]];[r[0],r[1],r[2]]=[b[0],b[1],b[2]];[b[0],b[1],b[2]]=[l[0],l[1],l[2]];[l[0],l[1],l[2]]=t;return{U:rotateCW(st.U),D:j(d),F:j(f),B:j(b),L:j(l),R:j(r)};}
+    case"U'":{const t=[f[0],f[1],f[2]];[f[0],f[1],f[2]]=[l[0],l[1],l[2]];[l[0],l[1],l[2]]=[b[0],b[1],b[2]];[b[0],b[1],b[2]]=[r[0],r[1],r[2]];[r[0],r[1],r[2]]=t;return{U:rotateCCW(st.U),D:j(d),F:j(f),B:j(b),L:j(l),R:j(r)};}
+    case"D": {const t=[f[6],f[7],f[8]];[f[6],f[7],f[8]]=[l[6],l[7],l[8]];[l[6],l[7],l[8]]=[b[6],b[7],b[8]];[b[6],b[7],b[8]]=[r[6],r[7],r[8]];[r[6],r[7],r[8]]=t;return{U:j(u),D:rotateCW(st.D),F:j(f),B:j(b),L:j(l),R:j(r)};}
+    case"D'":{const t=[f[6],f[7],f[8]];[f[6],f[7],f[8]]=[r[6],r[7],r[8]];[r[6],r[7],r[8]]=[b[6],b[7],b[8]];[b[6],b[7],b[8]]=[l[6],l[7],l[8]];[l[6],l[7],l[8]]=t;return{U:j(u),D:rotateCCW(st.D),F:j(f),B:j(b),L:j(l),R:j(r)};}
+    case"R": {const t=[u[2],u[5],u[8]];[u[2],u[5],u[8]]=[f[2],f[5],f[8]];[f[2],f[5],f[8]]=[d[2],d[5],d[8]];[d[2],d[5],d[8]]=[b[6],b[3],b[0]];[b[6],b[3],b[0]]=t;return{U:j(u),D:j(d),F:j(f),B:j(b),L:j(l),R:rotateCW(st.R)};}
+    case"R'":{const t=[u[2],u[5],u[8]];[u[2],u[5],u[8]]=[b[6],b[3],b[0]];[b[6],b[3],b[0]]=[d[2],d[5],d[8]];[d[2],d[5],d[8]]=[f[2],f[5],f[8]];[f[2],f[5],f[8]]=t;return{U:j(u),D:j(d),F:j(f),B:j(b),L:j(l),R:rotateCCW(st.R)};}
+    case"L": {const t=[u[0],u[3],u[6]];[u[0],u[3],u[6]]=[b[8],b[5],b[2]];[b[8],b[5],b[2]]=[d[0],d[3],d[6]];[d[0],d[3],d[6]]=[f[0],f[3],f[6]];[f[0],f[3],f[6]]=t;return{U:j(u),D:j(d),F:j(f),B:j(b),L:rotateCW(st.L),R:j(r)};}
+    case"L'":{const t=[u[0],u[3],u[6]];[u[0],u[3],u[6]]=[f[0],f[3],f[6]];[f[0],f[3],f[6]]=[d[0],d[3],d[6]];[d[0],d[3],d[6]]=[b[8],b[5],b[2]];[b[8],b[5],b[2]]=t;return{U:j(u),D:j(d),F:j(f),B:j(b),L:rotateCCW(st.L),R:j(r)};}
+    case"F": {const t=[u[6],u[7],u[8]];[u[6],u[7],u[8]]=[l[8],l[5],l[2]];[l[8],l[5],l[2]]=[d[2],d[1],d[0]];[d[2],d[1],d[0]]=[r[0],r[3],r[6]];[r[0],r[3],r[6]]=t;return{U:j(u),D:j(d),F:rotateCW(st.F),B:j(b),L:j(l),R:j(r)};}
+    case"F'":{const t=[u[6],u[7],u[8]];[u[6],u[7],u[8]]=[r[0],r[3],r[6]];[r[0],r[3],r[6]]=[d[2],d[1],d[0]];[d[2],d[1],d[0]]=[l[8],l[5],l[2]];[l[8],l[5],l[2]]=t;return{U:j(u),D:j(d),F:rotateCCW(st.F),B:j(b),L:j(l),R:j(r)};}
+    case"B": {const t=[u[0],u[1],u[2]];[u[0],u[1],u[2]]=[r[2],r[5],r[8]];[r[2],r[5],r[8]]=[d[8],d[7],d[6]];[d[8],d[7],d[6]]=[l[0],l[3],l[6]];[l[0],l[3],l[6]]=t;return{U:j(u),D:j(d),F:j(f),B:rotateCW(st.B),L:j(l),R:j(r)};}
+    case"B'":{const t=[u[0],u[1],u[2]];[u[0],u[1],u[2]]=[l[0],l[3],l[6]];[l[0],l[3],l[6]]=[d[8],d[7],d[6]];[d[8],d[7],d[6]]=[r[2],r[5],r[8]];[r[2],r[5],r[8]]=t;return{U:j(u),D:j(d),F:j(f),B:rotateCCW(st.B),L:j(l),R:j(r)};}
+    default: return st;
   }
 }
 
-function isSolved(state: Record<string,string>) {
-  return Object.keys(SOLVED_STATE).every(face =>
-    state[face].split("").every(c => c === state[face][4])
-  );
+function isSolved(st: Record<string,string>) {
+  return Object.keys(SOLVED).every(f => st[f].split("").every(c => c === st[f][4]));
 }
 
-function generateSolution(cubeState: Record<string,string>): string[] {
-  if (isSolved(cubeState)) return [];
-  const allMoves = ["U","U'","D","D'","L","L'","R","R'","F","F'","B","B'"];
-  const queue: {state: Record<string,string>, moves: string[]}[] = [{state: cubeState, moves: []}];
-  const visited = new Set([JSON.stringify(cubeState)]);
-  for (let depth = 0; depth < 7; depth++) {
-    const next: typeof queue = [];
-    for (const {state, moves} of queue) {
-      for (const move of allMoves) {
-        const ns = applyMove(state, move);
-        const key = JSON.stringify(ns);
-        if (!visited.has(key)) {
-          const nm = [...moves, move];
-          if (isSolved(ns)) return nm;
-          visited.add(key);
-          if (next.length < 50000) next.push({state: ns, moves: nm});
+function generateSolution(cube: Record<string,string>): string[] {
+  if (isSolved(cube)) return [];
+  const moves = ["U","U'","D","D'","L","L'","R","R'","F","F'","B","B'"];
+  const queue: {s:Record<string,string>,m:string[]}[] = [{s:cube,m:[]}];
+  const visited = new Set([JSON.stringify(cube)]);
+  for (let depth=0;depth<7;depth++){
+    const next: typeof queue=[];
+    for(const {s,m} of queue){
+      for(const mv of moves){
+        const ns=applyMove(s,mv);
+        const k=JSON.stringify(ns);
+        if(!visited.has(k)){
+          const nm=[...m,mv];
+          if(isSolved(ns)) return nm;
+          visited.add(k);
+          if(next.length<60000) next.push({s:ns,m:nm});
         }
       }
     }
-    queue.length = 0; queue.push(...next);
-    if (queue.length === 0) break;
+    queue.length=0;queue.push(...next);
+    if(!queue.length) break;
   }
   return ["R","U","R'","U'","R","U","R'","U'"];
 }
 
-const COLORS: Record<string,{hex:string,label:string}> = {
-  W:{hex:"#F8F8F0",label:"White / Blanco"}, Y:{hex:"#FFD700",label:"Yellow / Amarillo"},
-  R:{hex:"#E8251A",label:"Red / Rojo"},     O:{hex:"#FF6B1A",label:"Orange / Naranja"},
-  B:{hex:"#1A4FE8",label:"Blue / Azul"},    G:{hex:"#1AAE3E",label:"Green / Verde"},
+// ── THREE.JS CUBE ─────────────────────────────────────────────────────────────
+const FACE_NORMAL: Record<string, THREE.Vector3> = {
+  U: new THREE.Vector3(0,1,0),
+  D: new THREE.Vector3(0,-1,0),
+  F: new THREE.Vector3(0,0,1),
+  B: new THREE.Vector3(0,0,-1),
+  R: new THREE.Vector3(1,0,0),
+  L: new THREE.Vector3(-1,0,0),
 };
-const COLOR_KEYS = Object.keys(COLORS);
-const FACE_LABELS: Record<string,{en:string,es:string}> = {
-  U:{en:"Top",es:"Arriba"}, D:{en:"Bottom",es:"Abajo"}, F:{en:"Front",es:"Frente"},
-  B:{en:"Back",es:"Atrás"}, L:{en:"Left",es:"Izquierda"}, R:{en:"Right",es:"Derecha"},
-};
-const MOVE_INFO: Record<string,{arrow:string,desc:{en:string,es:string},color:string}> = {
-  "U":  {arrow:"↺",desc:{en:"Rotate top face clockwise",es:"Gira cara superior horario"},color:"#FFD700"},
-  "U'": {arrow:"↻",desc:{en:"Rotate top face counter-clockwise",es:"Gira cara superior antihorario"},color:"#FFD700"},
-  "D":  {arrow:"↺",desc:{en:"Rotate bottom face clockwise",es:"Gira cara inferior horario"},color:"#dddddd"},
-  "D'": {arrow:"↻",desc:{en:"Rotate bottom face counter-clockwise",es:"Gira cara inferior antihorario"},color:"#dddddd"},
-  "R":  {arrow:"↑",desc:{en:"Rotate right face upward",es:"Gira cara derecha hacia arriba"},color:"#1AAE3E"},
-  "R'": {arrow:"↓",desc:{en:"Rotate right face downward",es:"Gira cara derecha hacia abajo"},color:"#1AAE3E"},
-  "L":  {arrow:"↓",desc:{en:"Rotate left face downward",es:"Gira cara izquierda hacia abajo"},color:"#1A4FE8"},
-  "L'": {arrow:"↑",desc:{en:"Rotate left face upward",es:"Gira cara izquierda hacia arriba"},color:"#1A4FE8"},
-  "F":  {arrow:"↺",desc:{en:"Rotate front face clockwise",es:"Gira cara frontal horario"},color:"#E8251A"},
-  "F'": {arrow:"↻",desc:{en:"Rotate front face counter-clockwise",es:"Gira cara frontal antihorario"},color:"#E8251A"},
-  "B":  {arrow:"↺",desc:{en:"Rotate back face clockwise",es:"Gira cara trasera horario"},color:"#FF6B1A"},
-  "B'": {arrow:"↻",desc:{en:"Rotate back face counter-clockwise",es:"Gira cara trasera antihorario"},color:"#FF6B1A"},
-};
-const FACE_LAYOUT = [[null,"U",null,null],["L","F","R","B"],[null,"D",null,null]];
-const makeSolvedCube = () => JSON.parse(JSON.stringify(SOLVED_STATE));
 
-function FaceGrid({face,faceKey,onCellClick,highlight,size=60}:any) {
-  return (
-    <div style={{display:"grid",gridTemplateColumns:`repeat(3,${size}px)`,gap:"3px",padding:"4px",
-      background:highlight?"rgba(255,215,0,0.2)":"rgba(255,255,255,0.05)",borderRadius:"10px",
-      border:highlight?"2px solid #FFD700":"2px solid rgba(255,255,255,0.1)"}}>
-      {face.split("").map((c:string,i:number)=>(
-        <div key={i} onClick={()=>onCellClick?.(faceKey,i)}
-          style={{width:size,height:size,background:COLORS[c]?.hex||"#333",borderRadius:"5px",
-            cursor:onCellClick?"pointer":"default",border:"2px solid rgba(0,0,0,0.25)",
-            transition:"transform 0.15s"}}
-          onMouseEnter={e=>{if(onCellClick)(e.target as HTMLElement).style.transform="scale(1.08)"}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="scale(1)"}}
-        />
-      ))}
-    </div>
-  );
+// Map each cubie position + face to logical face key and sticker index
+function getStickerFace(pos: THREE.Vector3, normal: THREE.Vector3): {face:string,idx:number}|null {
+  const px=Math.round(pos.x), py=Math.round(pos.y), pz=Math.round(pos.z);
+  const nx=Math.round(normal.x), ny=Math.round(normal.y), nz=Math.round(normal.z);
+  let face="", row=0, col=0;
+  if(ny===1){face="U"; row=1-pz; col=px+1;}
+  else if(ny===-1){face="D"; row=pz+1; col=px+1;}
+  else if(nz===1){face="F"; row=1-py; col=px+1;}
+  else if(nz===-1){face="B"; row=1-py; col=1-px;}
+  else if(nx===1){face="R"; row=1-py; col=1-pz;}
+  else if(nx===-1){face="L"; row=1-py; col=pz+1;}
+  else return null;
+  return {face, idx: row*3+col};
 }
 
-function MoveIllustration({move,lang}:{move:string,lang:string}) {
-  const info = MOVE_INFO[move]||{};
-  const isCCW = move.includes("'");
-  return (
-    <div style={{background:"rgba(255,255,255,0.05)",borderRadius:"16px",padding:"20px",
-      border:`2px solid ${info.color||"#888"}44`,textAlign:"center"}}>
-      <div style={{fontSize:12,color:"#aaa",marginBottom:10}}>
-        {lang==="es"?"Movimiento actual":"Current move"}
-      </div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,marginBottom:14}}>
-        <div style={{width:68,height:68,borderRadius:"14px",background:`${info.color}22`,
-          border:`3px solid ${info.color}`,display:"flex",alignItems:"center",justifyContent:"center",
-          fontSize:26,fontWeight:900,color:info.color,fontFamily:"monospace",
-          boxShadow:`0 0 20px ${info.color}44`}}>{move}</div>
-        <div style={{fontSize:52,color:info.color}}>{info.arrow}</div>
-      </div>
-      <div style={{display:"inline-flex",alignItems:"center",gap:10,
-        background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"8px 16px",marginBottom:10}}>
-        <div style={{width:38,height:38,borderRadius:7,background:`${info.color}33`,
-          border:`2px solid ${info.color}`,display:"flex",alignItems:"center",justifyContent:"center",
-          fontSize:16,fontWeight:800,color:info.color}}>{move.replace("'","")}</div>
-        <span style={{color:"#aaa",fontSize:13}}>
-          {isCCW?(lang==="es"?"↺ antihorario":"↺ counter-clockwise"):(lang==="es"?"↻ horario":"↻ clockwise")}
-        </span>
-      </div>
-      <div style={{color:"#ddd",fontSize:13}}>{(info.desc as any)?.[lang]||info.desc?.en}</div>
-    </div>
-  );
+interface CubieData {
+  mesh: THREE.Mesh;
+  pos: THREE.Vector3; // logical position -1,0,1
+  stickers: {mesh: THREE.Mesh, face: string, idx: number}[];
 }
+
+// Move axis/layer/direction
+const MOVE_PARAMS: Record<string, {axis: "x"|"y"|"z", layer: number, dir: number}> = {
+  "U":  {axis:"y",layer:1,dir:-1},
+  "U'": {axis:"y",layer:1,dir:1},
+  "D":  {axis:"y",layer:-1,dir:1},
+  "D'": {axis:"y",layer:-1,dir:-1},
+  "R":  {axis:"x",layer:1,dir:-1},
+  "R'": {axis:"x",layer:1,dir:1},
+  "L":  {axis:"x",layer:-1,dir:1},
+  "L'": {axis:"x",layer:-1,dir:-1},
+  "F":  {axis:"z",layer:1,dir:-1},
+  "F'": {axis:"z",layer:1,dir:1},
+  "B":  {axis:"z",layer:-1,dir:1},
+  "B'": {axis:"z",layer:-1,dir:-1},
+};
 
 export default function RubikSolverPage() {
-  const [lang,setLang]=useState("es");
-  const [cubeState,setCubeState]=useState(makeSolvedCube());
-  const [selectedColor,setSelectedColor]=useState("R");
-  const [phase,setPhase]=useState<"input"|"solving">("input");
-  const [solution,setSolution]=useState<string[]>([]);
-  const [currentStep,setCurrentStep]=useState(0);
-  const [aiExplanation,setAiExplanation]=useState("");
-  const [aiLoading,setAiLoading]=useState(false);
-  const [activeFace,setActiveFace]=useState<string|null>(null);
+  const mountRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<THREE.Scene|null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera|null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer|null>(null);
+  const cubiesRef = useRef<CubieData[]>([]);
+  const animFrameRef = useRef<number>(0);
+  const isAnimatingRef = useRef(false);
 
-  const T:Record<string,Record<string,string>> = {
-    inputHint:{es:"Selecciona un color y haz clic en los cuadros",en:"Select a color and click squares to paint"},
-    solve:{es:"¡Resolver! ✦",en:"Solve! ✦"}, reset:{es:"Reiniciar",en:"Reset"},
-    solved:{es:"¡Ya está resuelto!",en:"Already solved!"},
-    stepOf:{es:"Paso",en:"Step"}, of:{es:"de",en:"of"},
-    prev:{es:"← Anterior",en:"← Previous"}, next:{es:"Siguiente →",en:"Next →"},
-    back:{es:"← Editar cubo",en:"← Edit cube"},
-    aiTitle:{es:"Explicación IA",en:"AI Explanation"},
-    aiBtn:{es:"Explicar con IA",en:"Explain with AI"},
-    loading:{es:"Claude está pensando…",en:"Claude is thinking…"},
-    totalMoves:{es:"movimientos",en:"moves"}, done:{es:"¡Cubo resuelto! 🎉",en:"Cube solved! 🎉"},
-    inputTitle:{es:"Pinta tu cubo",en:"Paint your cube"},
-    subtitle:{es:"Pinta tu cubo · Obtén la solución · Aprende con IA",en:"Paint your cube · Get the solution · Learn with AI"},
+  // Orbit state
+  const isDraggingRef = useRef(false);
+  const lastMouseRef = useRef({x:0,y:0});
+  const orbitRef = useRef({theta: Math.PI/6, phi: Math.PI/4});
+  const pivotRef = useRef<THREE.Group|null>(null);
+
+  const [cubeState, setCubeState] = useState<Record<string,string>>(JSON.parse(JSON.stringify(SOLVED)));
+  const [selectedColor, setSelectedColor] = useState("R");
+  const [phase, setPhase] = useState<"paint"|"solving">("paint");
+  const [solution, setSolution] = useState<string[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [lang, setLang] = useState("es");
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [paintMode, setPaintMode] = useState(true);
+  const [statusMsg, setStatusMsg] = useState("");
+
+  const cubeStateRef = useRef(cubeState);
+  cubeStateRef.current = cubeState;
+
+  // ── BUILD SCENE ──────────────────────────────────────────────────────────────
+  const buildCube = useCallback((state: Record<string,string>) => {
+    const scene = sceneRef.current!;
+    // Remove old cubies
+    cubiesRef.current.forEach(c => scene.remove(c.mesh));
+    cubiesRef.current = [];
+
+    const gap = 1.05;
+    for(let x=-1;x<=1;x++) for(let y=-1;y<=1;y++) for(let z=-1;z<=1;z++) {
+      const geo = new THREE.BoxGeometry(0.93,0.93,0.93);
+      const mat = new THREE.MeshPhongMaterial({color:0x111111, shininess:40});
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x*gap, y*gap, z*gap);
+      scene.add(mesh);
+
+      const stickers: CubieData["stickers"] = [];
+
+      // Add sticker faces
+      const normals = [
+        {n:new THREE.Vector3(1,0,0),  euler:[0,Math.PI/2,0]},
+        {n:new THREE.Vector3(-1,0,0), euler:[0,-Math.PI/2,0]},
+        {n:new THREE.Vector3(0,1,0),  euler:[-Math.PI/2,0,0]},
+        {n:new THREE.Vector3(0,-1,0), euler:[Math.PI/2,0,0]},
+        {n:new THREE.Vector3(0,0,1),  euler:[0,0,0]},
+        {n:new THREE.Vector3(0,0,-1), euler:[0,Math.PI,0]},
+      ];
+
+      for(const {n,euler} of normals) {
+        // Only show sticker if cubie is on that face
+        const onFace = (n.x===1&&x===1)||(n.x===-1&&x===-1)||
+                       (n.y===1&&y===1)||(n.y===-1&&y===-1)||
+                       (n.z===1&&z===1)||(n.z===-1&&z===-1);
+        if(!onFace) continue;
+
+        const info = getStickerFace(new THREE.Vector3(x,y,z), n);
+        if(!info) continue;
+        const colorChar = state[info.face][info.idx];
+        const color = COLOR_HEX[colorChar] ?? 0x333333;
+
+        const sGeo = new THREE.PlaneGeometry(0.8, 0.8);
+        const sMat = new THREE.MeshPhongMaterial({color, shininess:60, side:THREE.FrontSide});
+        const sMesh = new THREE.Mesh(sGeo, sMat);
+        sMesh.rotation.set(...euler as [number,number,number]);
+        const offset = 0.47;
+        sMesh.position.set(
+          mesh.position.x + n.x*offset,
+          mesh.position.y + n.y*offset,
+          mesh.position.z + n.z*offset
+        );
+        sMesh.userData = {cubiePosX:x,cubiePosY:y,cubiePosZ:z,normal:n,face:info.face,idx:info.idx};
+        scene.add(sMesh);
+        stickers.push({mesh:sMesh, face:info.face, idx:info.idx});
+      }
+
+      cubiesRef.current.push({
+        mesh,
+        pos: new THREE.Vector3(x,y,z),
+        stickers
+      });
+    }
+  }, []);
+
+  const updateStickerColors = useCallback((state: Record<string,string>) => {
+    cubiesRef.current.forEach(cubie => {
+      cubie.stickers.forEach(sticker => {
+        const colorChar = state[sticker.face][sticker.idx];
+        (sticker.mesh.material as THREE.MeshPhongMaterial).color.setHex(COLOR_HEX[colorChar] ?? 0x333333);
+      });
+    });
+  }, []);
+
+  // ── ANIMATE MOVE ─────────────────────────────────────────────────────────────
+  const animateMove = useCallback((move: string, onDone: () => void) => {
+    const scene = sceneRef.current!;
+    const params = MOVE_PARAMS[move];
+    if(!params) { onDone(); return; }
+    const {axis, layer, dir} = params;
+    const angle = dir * Math.PI/2;
+    const DURATION = 350; // ms
+
+    // Find cubies in this layer
+    const layerCubies = cubiesRef.current.filter(c => Math.round((c.pos as any)[axis]) === layer);
+
+    // Create pivot group
+    const pivot = new THREE.Group();
+    scene.add(pivot);
+
+    layerCubies.forEach(c => {
+      scene.remove(c.mesh);
+      pivot.add(c.mesh);
+      c.stickers.forEach(s => { scene.remove(s.mesh); pivot.add(s.mesh); });
+    });
+
+    const start = performance.now();
+    function tick() {
+      const t = Math.min((performance.now()-start)/DURATION, 1);
+      const ease = t<0.5 ? 2*t*t : -1+(4-2*t)*t; // ease in-out
+      const current = angle * ease;
+      if(axis==="x") pivot.rotation.x = current;
+      else if(axis==="y") pivot.rotation.y = current;
+      else pivot.rotation.z = current;
+
+      if(t<1){ animFrameRef.current = requestAnimationFrame(tick); }
+      else {
+        // Finalize
+        pivot.rotation.set(
+          axis==="x"?angle:0,
+          axis==="y"?angle:0,
+          axis==="z"?angle:0
+        );
+        pivot.updateMatrixWorld();
+        layerCubies.forEach(c => {
+          pivot.remove(c.mesh);
+          scene.add(c.mesh);
+          c.mesh.applyMatrix4(pivot.matrixWorld);
+          c.mesh.position.set(
+            Math.round(c.mesh.position.x/1.05)*1.05,
+            Math.round(c.mesh.position.y/1.05)*1.05,
+            Math.round(c.mesh.position.z/1.05)*1.05
+          );
+          c.mesh.rotation.set(
+            Math.round(c.mesh.rotation.x/(Math.PI/2))*(Math.PI/2),
+            Math.round(c.mesh.rotation.y/(Math.PI/2))*(Math.PI/2),
+            Math.round(c.mesh.rotation.z/(Math.PI/2))*(Math.PI/2)
+          );
+          c.pos.set(
+            Math.round(c.mesh.position.x/1.05),
+            Math.round(c.mesh.position.y/1.05),
+            Math.round(c.mesh.position.z/1.05)
+          );
+          c.stickers.forEach(s => {
+            pivot.remove(s.mesh);
+            scene.add(s.mesh);
+            s.mesh.applyMatrix4(pivot.matrixWorld);
+          });
+        });
+        scene.remove(pivot);
+        onDone();
+      }
+    }
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  // ── INIT THREE ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const el = mountRef.current!;
+    const w = el.clientWidth, h = el.clientHeight;
+
+    const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setSize(w,h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.shadowMap.enabled = true;
+    el.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
+
+    const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
+    camera.position.set(0,0,8);
+    cameraRef.current = camera;
+
+    // Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(5,8,6);
+    scene.add(dir);
+    const dir2 = new THREE.DirectionalLight(0xffffff, 0.3);
+    dir2.position.set(-5,-3,-4);
+    scene.add(dir2);
+
+    const pivot = new THREE.Group();
+    scene.add(pivot);
+    pivotRef.current = pivot;
+
+    buildCube(JSON.parse(JSON.stringify(SOLVED)));
+
+    // Render loop
+    let rafId: number;
+    function render() {
+      rafId = requestAnimationFrame(render);
+      // Apply orbit
+      const {theta,phi} = orbitRef.current;
+      const r = 8;
+      camera.position.set(
+        r*Math.sin(phi)*Math.sin(theta),
+        r*Math.cos(phi),
+        r*Math.sin(phi)*Math.cos(theta)
+      );
+      camera.lookAt(0,0,0);
+      renderer.render(scene, camera);
+    }
+    render();
+
+    // Resize
+    const onResize = () => {
+      const w=el.clientWidth, h=el.clientHeight;
+      renderer.setSize(w,h);
+      camera.aspect=w/h;
+      camera.updateProjectionMatrix();
+    };
+    window.addEventListener("resize",onResize);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize",onResize);
+      renderer.dispose();
+      el.removeChild(renderer.domElement);
+    };
+  }, [buildCube]);
+
+  // ── ORBIT CONTROLS (mouse + touch) ────────────────────────────────────────────
+  useEffect(() => {
+    const el = mountRef.current!;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if(!paintMode){ isDraggingRef.current=true; lastMouseRef.current={x:e.clientX,y:e.clientY}; }
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if(!isDraggingRef.current) return;
+      const dx=e.clientX-lastMouseRef.current.x, dy=e.clientY-lastMouseRef.current.y;
+      orbitRef.current.theta -= dx*0.008;
+      orbitRef.current.phi = Math.max(0.2, Math.min(Math.PI-0.2, orbitRef.current.phi + dy*0.008));
+      lastMouseRef.current={x:e.clientX,y:e.clientY};
+    };
+    const onMouseUp = () => { isDraggingRef.current=false; };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if(!paintMode && e.touches.length===1){
+        isDraggingRef.current=true;
+        lastMouseRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY};
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if(!isDraggingRef.current||e.touches.length!==1) return;
+      e.preventDefault();
+      const dx=e.touches[0].clientX-lastMouseRef.current.x;
+      const dy=e.touches[0].clientY-lastMouseRef.current.y;
+      orbitRef.current.theta -= dx*0.008;
+      orbitRef.current.phi = Math.max(0.2, Math.min(Math.PI-0.2, orbitRef.current.phi + dy*0.008));
+      lastMouseRef.current={x:e.touches[0].clientX,y:e.touches[0].clientY};
+    };
+    const onTouchEnd = () => { isDraggingRef.current=false; };
+
+    el.addEventListener("mousedown",onMouseDown);
+    window.addEventListener("mousemove",onMouseMove);
+    window.addEventListener("mouseup",onMouseUp);
+    el.addEventListener("touchstart",onTouchStart,{passive:false});
+    el.addEventListener("touchmove",onTouchMove,{passive:false});
+    el.addEventListener("touchend",onTouchEnd);
+
+    return () => {
+      el.removeEventListener("mousedown",onMouseDown);
+      window.removeEventListener("mousemove",onMouseMove);
+      window.removeEventListener("mouseup",onMouseUp);
+      el.removeEventListener("touchstart",onTouchStart);
+      el.removeEventListener("touchmove",onTouchMove);
+      el.removeEventListener("touchend",onTouchEnd);
+    };
+  }, [paintMode]);
+
+  // ── PAINT ON CLICK ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const el = mountRef.current!;
+    const handleClick = (e: MouseEvent | TouchEvent) => {
+      if(!paintMode) return;
+      const renderer = rendererRef.current!;
+      const camera = cameraRef.current!;
+      const scene = sceneRef.current!;
+      const rect = el.getBoundingClientRect();
+      let cx: number, cy: number;
+      if(e instanceof MouseEvent){ cx=e.clientX; cy=e.clientY; }
+      else { cx=e.changedTouches[0].clientX; cy=e.changedTouches[0].clientY; }
+      const mouse = new THREE.Vector2(
+        ((cx-rect.left)/rect.width)*2-1,
+        -((cy-rect.top)/rect.height)*2+1
+      );
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      // Get all sticker meshes
+      const stickers: THREE.Mesh[] = [];
+      cubiesRef.current.forEach(c => c.stickers.forEach(s => stickers.push(s.mesh)));
+      const hits = raycaster.intersectObjects(stickers);
+      if(hits.length>0){
+        const hit = hits[0].object as THREE.Mesh;
+        const {face, idx} = hit.userData;
+        if(face && idx!==undefined){
+          setCubeState(prev => {
+            const arr = prev[face].split("");
+            arr[idx] = selectedColor;
+            const next = {...prev, [face]: arr.join("")};
+            updateStickerColors(next);
+            return next;
+          });
+        }
+      }
+    };
+    el.addEventListener("click", handleClick);
+    el.addEventListener("touchend", handleClick as any);
+    return () => {
+      el.removeEventListener("click", handleClick);
+      el.removeEventListener("touchend", handleClick as any);
+    };
+  }, [paintMode, selectedColor, updateStickerColors]);
+
+  // ── SOLVE ANIMATION ───────────────────────────────────────────────────────────
+  const runSolveAnimation = useCallback((steps: string[], startIdx: number, stateAtStart: Record<string,string>) => {
+    if(startIdx >= steps.length){ isAnimatingRef.current=false; return; }
+    isAnimatingRef.current=true;
+    const move = steps[startIdx];
+    animateMove(move, () => {
+      const newState = applyMove(stateAtStart, move);
+      setCubeState(newState);
+      updateStickerColors(newState);
+      setCurrentStep(startIdx+1);
+      setTimeout(() => runSolveAnimation(steps, startIdx+1, newState), 200);
+    });
+  }, [animateMove, updateStickerColors]);
+
+  const handleSolve = () => {
+    const steps = generateSolution(cubeState);
+    setSolution(steps);
+    setCurrentStep(0);
+    setPhase("solving");
+    setAiText("");
+    setPaintMode(false);
+    setStatusMsg(steps.length===0
+      ? (lang==="es"?"¡Ya está resuelto!":"Already solved!")
+      : `${steps.length} ${lang==="es"?"movimientos":"moves"}`
+    );
+    if(steps.length>0){
+      setTimeout(() => runSolveAnimation(steps, 0, cubeState), 400);
+    }
   };
-  const tx=(k:string)=>T[k]?.[lang]||k;
 
-  const handleCellClick=(faceKey:string,idx:number)=>{
-    setCubeState((prev:any)=>{const face=prev[faceKey].split("");face[idx]=selectedColor;return{...prev,[faceKey]:face.join("")};});
-    setActiveFace(faceKey);
+  const handleReset = () => {
+    const fresh = JSON.parse(JSON.stringify(SOLVED));
+    setCubeState(fresh);
+    buildCube(fresh);
+    setSolution([]); setCurrentStep(0);
+    setPhase("paint"); setPaintMode(true);
+    setAiText(""); setStatusMsg("");
+    isAnimatingRef.current=false;
   };
-  const handleSolve=()=>{setSolution(generateSolution(cubeState));setCurrentStep(0);setPhase("solving");setAiExplanation("");};
-  const handleReset=()=>{setCubeState(makeSolvedCube());setSolution([]);setCurrentStep(0);setPhase("input");setAiExplanation("");setActiveFace(null);};
 
-  const stateAtStep=useCallback(()=>{
-    let s=cubeState;
-    for(let i=0;i<currentStep;i++) s=applyMove(s,solution[i]);
-    return s;
-  },[cubeState,solution,currentStep]);
-
-  const currentMove=solution[currentStep];
-
-  const askAI=async()=>{
-    setAiLoading(true);setAiExplanation("");
-    try{
-      const res=await fetch("/api/rubik-ai",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({move:currentMove,stepNum:currentStep+1,total:solution.length,lang})});
-      const data=await res.json();
-      setAiExplanation(data.explanation||"");
-    }catch{setAiExplanation(lang==="es"?"Error al conectar con la IA.":"Error connecting to AI.");}
+  const askAI = async () => {
+    setAiLoading(true); setAiText("");
+    const move = solution[currentStep-1] || solution[0];
+    try {
+      const res = await fetch("/api/rubik-ai",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({move,stepNum:currentStep,total:solution.length,lang})});
+      const data = await res.json();
+      setAiText(data.explanation||"");
+    } catch { setAiText("Error"); }
     setAiLoading(false);
   };
 
-  return(
-    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0d0d1a 0%,#0a1628 40%,#0d0d1a 100%)",
-      fontFamily:"'Inter','Segoe UI',sans-serif",color:"#fff",padding:"0 0 60px"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');*{box-sizing:border-box}`}</style>
+  const COLORS_UI = [
+    {k:"W",hex:"#F5F5F0",label:"Blanco"},{k:"Y",hex:"#FFD700",label:"Amarillo"},
+    {k:"R",hex:"#E8251A",label:"Rojo"},{k:"O",hex:"#FF6B1A",label:"Naranja"},
+    {k:"B",hex:"#1A4FE8",label:"Azul"},{k:"G",hex:"#1AAE3E",label:"Verde"},
+  ];
+
+  return (
+    <div style={{height:"100dvh",display:"flex",flexDirection:"column",
+      background:"linear-gradient(135deg,#0a0a1a 0%,#0d1528 100%)",
+      fontFamily:"'Inter','Segoe UI',sans-serif",color:"#fff",overflow:"hidden"}}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        :root{--red:#E8251A;--gap:12px}
+      `}</style>
 
       {/* HEADER */}
-      <div style={{borderBottom:"1px solid rgba(255,255,255,0.08)",background:"rgba(255,255,255,0.03)",
-        backdropFilter:"blur(20px)",padding:"0 24px",display:"flex",alignItems:"center",
-        justifyContent:"space-between",height:64,position:"sticky",top:0,zIndex:100}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:"linear-gradient(135deg,#E8251A,#FF6B1A)",
-            display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🧩</div>
-          <div>
-            <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:20}}>
-              Rubik<span style={{color:"#E8251A"}}>Solver</span>
-            </div>
-            <div style={{fontSize:11,color:"#888"}}>quiz-quests.com</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",
+        background:"rgba(255,255,255,0.02)",backdropFilter:"blur(20px)",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:32,height:32,borderRadius:8,
+            background:"linear-gradient(135deg,#E8251A,#FF6B1A)",
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🧩</div>
+          <span style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:18}}>
+            Rubik<span style={{color:"#E8251A"}}>Solver</span>
+          </span>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {/* Mode toggle */}
+          <button onClick={()=>setPaintMode(p=>!p)} style={{
+            padding:"5px 12px",borderRadius:16,border:"1px solid rgba(255,255,255,0.2)",
+            background:paintMode?"rgba(232,37,26,0.2)":"rgba(255,255,255,0.08)",
+            color:paintMode?"#E8251A":"#aaa",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+            {paintMode?"🖌 Pintando":"🔄 Girando"}
+          </button>
+          <div style={{display:"flex",gap:4,background:"rgba(255,255,255,0.07)",borderRadius:16,padding:3}}>
+            {["es","en"].map(l=>(
+              <button key={l} onClick={()=>setLang(l)} style={{padding:"3px 10px",borderRadius:12,border:"none",
+                cursor:"pointer",background:lang===l?"#E8251A":"transparent",
+                color:lang===l?"#fff":"#888",fontWeight:600,fontSize:12}}>{l.toUpperCase()}</button>
+            ))}
           </div>
         </div>
-        <div style={{display:"flex",gap:6,background:"rgba(255,255,255,0.07)",borderRadius:20,padding:4}}>
-          {["es","en"].map(l=>(
-            <button key={l} onClick={()=>setLang(l)} style={{padding:"4px 14px",borderRadius:16,border:"none",
-              cursor:"pointer",background:lang===l?"#E8251A":"transparent",
-              color:lang===l?"#fff":"#aaa",fontWeight:600,fontSize:13,transition:"all 0.2s"}}>{l.toUpperCase()}</button>
-          ))}
-        </div>
       </div>
 
-      {/* HERO */}
-      <div style={{textAlign:"center",padding:"40px 24px 28px"}}>
-        <div style={{display:"inline-flex",marginBottom:16,background:"rgba(232,37,26,0.12)",
-          border:"1px solid rgba(232,37,26,0.3)",borderRadius:20,padding:"5px 14px",
-          fontSize:11,color:"#E8251A",fontWeight:600,letterSpacing:1}}>✦ POWERED BY CLAUDE AI</div>
-        <h1 style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:"clamp(28px,5vw,52px)",fontWeight:700,
-          margin:"0 0 10px",background:"linear-gradient(135deg,#fff 40%,#E8251A)",
-          WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>RubikSolver</h1>
-        <p style={{color:"#999",fontSize:15,margin:0}}>{tx("subtitle")}</p>
-      </div>
+      {/* 3D CANVAS */}
+      <div ref={mountRef} style={{flex:1,position:"relative",cursor:paintMode?"crosshair":"grab",minHeight:0}} />
 
-      <div style={{maxWidth:880,margin:"0 auto",padding:"0 16px"}}>
+      {/* BOTTOM PANEL */}
+      <div style={{flexShrink:0,background:"rgba(10,10,26,0.95)",backdropFilter:"blur(20px)",
+        borderTop:"1px solid rgba(255,255,255,0.1)",padding:"12px 16px"}}>
 
-        {phase==="input"&&(
+        {phase==="paint" && (
           <div>
-            <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",
-              borderRadius:20,padding:"24px",marginBottom:20}}>
-              <h2 style={{margin:"0 0 4px",fontFamily:"'Space Grotesk',sans-serif",fontSize:20}}>{tx("inputTitle")}</h2>
-              <p style={{color:"#888",margin:"0 0 20px",fontSize:13}}>{tx("inputHint")}</p>
-              <div style={{display:"flex",gap:10,marginBottom:24,flexWrap:"wrap",alignItems:"center"}}>
-                {COLOR_KEYS.map(c=>(
-                  <button key={c} onClick={()=>setSelectedColor(c)} title={COLORS[c].label}
-                    style={{width:42,height:42,borderRadius:9,background:COLORS[c].hex,border:selectedColor===c?"3px solid #fff":"3px solid transparent",
-                      cursor:"pointer",transform:selectedColor===c?"scale(1.15)":"scale(1)",transition:"all 0.2s",
-                      boxShadow:selectedColor===c?`0 0 0 2px #E8251A`:"none"}}/>
-                ))}
-                <span style={{color:"#aaa",fontSize:13,marginLeft:4}}>← {COLORS[selectedColor].label}</span>
-              </div>
-              <div style={{overflowX:"auto"}}>
-                <div style={{display:"inline-block"}}>
-                  {FACE_LAYOUT.map((row,ri)=>(
-                    <div key={ri} style={{display:"flex",gap:8,marginBottom:8}}>
-                      {row.map((faceKey,ci)=>(
-                        <div key={ci} style={{width:198,flexShrink:0}}>
-                          {faceKey&&(<div>
-                            <div style={{textAlign:"center",fontSize:11,color:"#aaa",marginBottom:3,fontWeight:600}}>
-                              {FACE_LABELS[faceKey]?.[lang as "en"|"es"]} ({faceKey})
-                            </div>
-                            <FaceGrid face={cubeState[faceKey]} faceKey={faceKey}
-                              onCellClick={handleCellClick} highlight={activeFace===faceKey} size={60}/>
-                          </div>)}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div style={{fontSize:12,color:"#888",marginBottom:8,textAlign:"center"}}>
+              {lang==="es"
+                ?"Selecciona un color → Toca Pintando → Haz clic en las caras del cubo"
+                :"Select color → Tap Painting mode → Click cube faces"}
             </div>
-            <div style={{display:"flex",gap:12,justifyContent:"center"}}>
-              <button onClick={handleSolve} style={{padding:"13px 32px",borderRadius:12,border:"none",
+            {/* Color palette */}
+            <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:12}}>
+              {COLORS_UI.map(c=>(
+                <button key={c.k} onClick={()=>setSelectedColor(c.k)}
+                  title={c.label}
+                  style={{width:36,height:36,borderRadius:8,background:c.hex,border:"none",
+                    cursor:"pointer",outline:selectedColor===c.k?"3px solid #fff":"3px solid transparent",
+                    boxShadow:selectedColor===c.k?`0 0 0 2px #E8251A,0 0 12px ${c.hex}88`:"none",
+                    transform:selectedColor===c.k?"scale(1.2)":"scale(1)",transition:"all 0.15s"}}/>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+              <button onClick={handleSolve} style={{padding:"10px 28px",borderRadius:10,border:"none",
                 background:"linear-gradient(135deg,#E8251A,#FF6B1A)",color:"#fff",fontWeight:700,
-                fontSize:16,cursor:"pointer",boxShadow:"0 4px 18px rgba(232,37,26,0.4)",
-                fontFamily:"'Space Grotesk',sans-serif"}}>{tx("solve")}</button>
-              <button onClick={handleReset} style={{padding:"13px 22px",borderRadius:12,
+                fontSize:15,cursor:"pointer",boxShadow:"0 4px 16px rgba(232,37,26,0.4)"}}>
+                {lang==="es"?"¡Resolver! ✦":"Solve! ✦"}
+              </button>
+              <button onClick={handleReset} style={{padding:"10px 18px",borderRadius:10,
                 border:"1px solid rgba(255,255,255,0.2)",background:"transparent",
-                color:"#aaa",fontWeight:600,fontSize:15,cursor:"pointer"}}>{tx("reset")}</button>
+                color:"#aaa",fontWeight:600,fontSize:14,cursor:"pointer"}}>
+                {lang==="es"?"Reiniciar":"Reset"}
+              </button>
             </div>
           </div>
         )}
 
-        {phase==="solving"&&(
+        {phase==="solving" && (
           <div>
-            {solution.length===0?(
-              <div style={{textAlign:"center",padding:"56px 24px",background:"rgba(26,174,62,0.1)",
-                borderRadius:20,border:"2px solid rgba(26,174,62,0.3)"}}>
-                <div style={{fontSize:60,marginBottom:12}}>🎉</div>
-                <h2 style={{color:"#1AAE3E",margin:"0 0 16px"}}>{tx("solved")}</h2>
-                <button onClick={handleReset} style={{padding:"12px 28px",borderRadius:12,background:"#1AAE3E",
-                  border:"none",color:"#fff",fontWeight:700,cursor:"pointer"}}>{tx("reset")}</button>
-              </div>
-            ):(
-              <div>
-                <div style={{marginBottom:20}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                    <span style={{color:"#aaa",fontSize:14}}>{tx("stepOf")} {currentStep+1} {tx("of")} {solution.length} — {solution.length} {tx("totalMoves")}</span>
-                    <button onClick={()=>{setPhase("input");setAiExplanation("");}} style={{background:"none",
-                      border:"1px solid rgba(255,255,255,0.2)",color:"#aaa",cursor:"pointer",
-                      borderRadius:8,padding:"4px 12px",fontSize:13}}>{tx("back")}</button>
-                  </div>
-                  <div style={{height:5,background:"rgba(255,255,255,0.1)",borderRadius:3}}>
-                    <div style={{height:"100%",borderRadius:3,background:"linear-gradient(90deg,#E8251A,#FF6B1A)",
-                      width:`${(currentStep/solution.length)*100}%`,transition:"width 0.4s ease"}}/>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20}}>
-                  {solution.map((m,i)=>(
-                    <button key={i} onClick={()=>{setCurrentStep(i);setAiExplanation("");}} style={{
-                      padding:"5px 12px",borderRadius:7,border:"2px solid",fontFamily:"monospace",fontWeight:700,fontSize:13,cursor:"pointer",
-                      borderColor:i===currentStep?(MOVE_INFO[m]?.color||"#E8251A"):"rgba(255,255,255,0.1)",
-                      background:i<currentStep?"rgba(26,174,62,0.15)":i===currentStep?`${MOVE_INFO[m]?.color||"#E8251A"}22`:"transparent",
-                      color:i===currentStep?(MOVE_INFO[m]?.color||"#fff"):i<currentStep?"#1AAE3E":"#666",
-                      textDecoration:i<currentStep?"line-through":"none"}}>{m}</button>
-                  ))}
-                  {currentStep===solution.length&&<span style={{color:"#1AAE3E",fontWeight:700,alignSelf:"center",marginLeft:8}}>✓ {tx("done")}</span>}
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-                  <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:16,padding:16}}>
-                    <div style={{fontSize:12,color:"#888",marginBottom:10,textAlign:"center"}}>
-                      {lang==="es"?"Estado actual":"Current state"}
-                    </div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:5,justifyContent:"center"}}>
-                      {Object.keys(stateAtStep()).map(fk=>(
-                        <div key={fk} style={{textAlign:"center"}}>
-                          <div style={{fontSize:9,color:"#555",marginBottom:2}}>{fk}</div>
-                          <FaceGrid face={stateAtStep()[fk]} faceKey={fk} highlight={currentMove?.replace("'","")===fk} size={18}/>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:12}}>
-                    {currentStep<solution.length
-                      ?<MoveIllustration move={currentMove} lang={lang}/>
-                      :<div style={{background:"rgba(26,174,62,0.1)",borderRadius:16,padding:20,
-                          border:"2px solid rgba(26,174,62,0.3)",textAlign:"center",fontSize:17}}>🎉 {tx("done")}</div>}
-                    <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:14,padding:14}}>
-                      <div style={{fontSize:12,color:"#E8251A",fontWeight:600,marginBottom:8}}>✦ {tx("aiTitle")}</div>
-                      {aiLoading?(<div style={{color:"#888",fontSize:13,fontStyle:"italic"}}>{tx("loading")}</div>)
-                        :aiExplanation?(<p style={{color:"#ccc",fontSize:13,margin:0,lineHeight:1.6}}>{aiExplanation}</p>)
-                        :currentStep<solution.length&&(
-                          <button onClick={askAI} style={{padding:"9px 16px",borderRadius:9,border:"1px solid rgba(232,37,26,0.4)",
-                            background:"rgba(232,37,26,0.1)",color:"#E8251A",fontWeight:600,fontSize:13,cursor:"pointer",width:"100%"}}>
-                            🤖 {tx("aiBtn")}
-                          </button>
-                        )}
-                    </div>
-                  </div>
-                </div>
-                <div style={{display:"flex",gap:12,justifyContent:"center",marginTop:20}}>
-                  <button onClick={()=>{setCurrentStep(s=>Math.max(0,s-1));setAiExplanation("");}} disabled={currentStep===0}
-                    style={{padding:"11px 22px",borderRadius:11,border:"1px solid rgba(255,255,255,0.2)",
-                      background:"transparent",color:currentStep===0?"#555":"#fff",fontWeight:600,fontSize:14,
-                      cursor:currentStep===0?"not-allowed":"pointer"}}>{tx("prev")}</button>
-                  <button onClick={()=>{setCurrentStep(s=>Math.min(solution.length,s+1));setAiExplanation("");}} disabled={currentStep===solution.length}
-                    style={{padding:"11px 26px",borderRadius:11,border:"none",fontWeight:700,fontSize:14,
-                      background:currentStep===solution.length?"rgba(26,174,62,0.3)":"linear-gradient(135deg,#E8251A,#FF6B1A)",
-                      color:"#fff",cursor:currentStep===solution.length?"not-allowed":"pointer",
-                      boxShadow:currentStep<solution.length?"0 4px 14px rgba(232,37,26,0.35)":"none"}}>{tx("next")}</button>
-                </div>
+            {/* Progress */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{color:"#aaa",fontSize:13}}>
+                {currentStep}/{solution.length} {lang==="es"?"movimientos":"moves"}
+                {statusMsg && <span style={{color:"#1AAE3E",marginLeft:8}}>— {statusMsg}</span>}
+              </span>
+              <button onClick={handleReset} style={{background:"none",border:"1px solid rgba(255,255,255,0.2)",
+                color:"#aaa",cursor:"pointer",borderRadius:7,padding:"3px 10px",fontSize:12}}>
+                {lang==="es"?"← Volver":"← Back"}
+              </button>
+            </div>
+            <div style={{height:4,background:"rgba(255,255,255,0.1)",borderRadius:2,marginBottom:10}}>
+              <div style={{height:"100%",borderRadius:2,
+                background:"linear-gradient(90deg,#E8251A,#FF6B1A)",
+                width:solution.length?`${(currentStep/solution.length)*100}%`:"0%",
+                transition:"width 0.4s ease"}}/>
+            </div>
+            {/* Move chips */}
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>
+              {solution.map((m,i)=>(
+                <div key={i} style={{padding:"3px 10px",borderRadius:6,fontSize:12,fontWeight:700,
+                  fontFamily:"monospace",
+                  background:i<currentStep?"rgba(26,174,62,0.2)":i===currentStep-1?"rgba(232,37,26,0.3)":"rgba(255,255,255,0.06)",
+                  color:i<currentStep?"#1AAE3E":i===currentStep-1?"#ff6b6b":"#666",
+                  textDecoration:i<currentStep?"line-through":"none",
+                  border:`1px solid ${i===currentStep-1?"rgba(232,37,26,0.5)":"transparent"}`
+                }}>{m}</div>
+              ))}
+              {currentStep===solution.length&&solution.length>0&&(
+                <span style={{color:"#1AAE3E",fontWeight:700,alignSelf:"center"}}>🎉 {lang==="es"?"¡Resuelto!":"Solved!"}</span>
+              )}
+            </div>
+            {/* AI */}
+            {currentStep>0 && currentStep<=solution.length && (
+              <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:11,color:"#E8251A",fontWeight:600,marginBottom:6}}>✦ {lang==="es"?"Explicación IA":"AI Explanation"}</div>
+                {aiLoading
+                  ? <div style={{color:"#888",fontSize:13,fontStyle:"italic"}}>{lang==="es"?"Claude está pensando…":"Claude is thinking…"}</div>
+                  : aiText
+                    ? <p style={{color:"#ccc",fontSize:13,lineHeight:1.5}}>{aiText}</p>
+                    : <button onClick={askAI} style={{padding:"6px 14px",borderRadius:8,
+                        border:"1px solid rgba(232,37,26,0.4)",background:"rgba(232,37,26,0.1)",
+                        color:"#E8251A",fontWeight:600,fontSize:12,cursor:"pointer"}}>
+                        🤖 {lang==="es"?"Explicar movimiento":"Explain move"}
+                      </button>
+                }
               </div>
             )}
           </div>
         )}
       </div>
-      <div style={{textAlign:"center",marginTop:56,color:"#444",fontSize:12}}>RubikSolver · quiz-quests.com · Powered by Claude AI</div>
     </div>
   );
 }
