@@ -12,7 +12,9 @@
     "react": "^18",
     "react-dom": "^18",
     "katex": "^0.16.10",
-    "@clerk/nextjs": "^6.0.0"
+    "@clerk/nextjs": "^6.0.0",
+    "three": "^0.165.0",
+    "@types/three": "^0.165.0"
   },
   "devDependencies": {
     "@types/node": "^20",
