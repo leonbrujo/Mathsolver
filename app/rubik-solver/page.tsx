@@ -484,33 +484,40 @@ export default function RubikSolverPage(){
   const findSticker = useCallback((cx:number,cy:number,w:number,h:number):{gx:number,gy:number,gz:number,fk:string,face:string,idx:number,dist:number,depth:number}|null=>{
     const{camX,camY,camZ}=getVP();
     const GAP=1.06;
-    type BestHit={dist:number,gx:number,gy:number,gz:number,fk:string,face:string,idx:number,depth:number};
-    let best:BestHit|null=null;
-
-    const tryFace=(gx:number,gy:number,gz:number,fk:string,wx:number,wy:number,wz:number,nx:number,ny:number,nz:number)=>{
-      // backface cull
-      const dot=nx*(wx-camX)+ny*(wy-camY)+nz*(wz-camZ);
-      if(dot>=0)return;
-      const p=project3D(wx,wy,wz,w,h);
-      if(!p)return;
-      const d=Math.sqrt((p.sx-cx)**2+(p.sy-cy)**2);
-      const info=getStickerInfo(gx,gy,gz,fk);
-      if(!best||d<best.dist||(d<best.dist+5&&p.depth<best.depth)){
-        best={dist:d,gx,gy,gz,fk,...info,depth:p.depth};
-      }
-    };
+    // Use array to avoid closure type narrowing issues
+    const bestArr:{dist:number,gx:number,gy:number,gz:number,fk:string,face:string,idx:number,depth:number}[]=[];
 
     for(let gx=-1;gx<=1;gx++)for(let gy=-1;gy<=1;gy++)for(let gz=-1;gz<=1;gz++){
       const wx=gx*GAP,wy=gy*GAP,wz=gz*GAP;
-      if(gy===1) tryFace(gx,gy,gz,"U",wx,wy+0.49,wz,0,1,0);
-      if(gy===-1)tryFace(gx,gy,gz,"D",wx,wy-0.49,wz,0,-1,0);
-      if(gz===1) tryFace(gx,gy,gz,"F",wx,wy,wz+0.49,0,0,1);
-      if(gz===-1)tryFace(gx,gy,gz,"B",wx,wy,wz-0.49,0,0,-1);
-      if(gx===1) tryFace(gx,gy,gz,"R",wx+0.49,wy,wz,1,0,0);
-      if(gx===-1)tryFace(gx,gy,gz,"L",wx-0.49,wy,wz,-1,0,0);
+      const candidates:[string,number,number,number,number,number,number][]=[
+        ["U",wx,wy+0.49,wz,0,1,0],
+        ["D",wx,wy-0.49,wz,0,-1,0],
+        ["F",wx,wy,wz+0.49,0,0,1],
+        ["B",wx,wy,wz-0.49,0,0,-1],
+        ["R",wx+0.49,wy,wz,1,0,0],
+        ["L",wx-0.49,wy,wz,-1,0,0],
+      ];
+      for(const[fk,sx,sy,sz,nx,ny,nz] of candidates){
+        // Only render visible faces
+        if(fk==="U"&&gy!==1)continue;if(fk==="D"&&gy!==-1)continue;
+        if(fk==="F"&&gz!==1)continue;if(fk==="B"&&gz!==-1)continue;
+        if(fk==="R"&&gx!==1)continue;if(fk==="L"&&gx!==-1)continue;
+        // Backface cull
+        const dot=nx*(wx-camX)+ny*(wy-camY)+nz*(wz-camZ);
+        if(dot>=0)continue;
+        const p=project3D(sx,sy,sz,w,h);
+        if(!p)continue;
+        const d=Math.sqrt((p.sx-cx)**2+(p.sy-cy)**2);
+        const info=getStickerInfo(gx,gy,gz,fk);
+        const cur=bestArr[0];
+        if(!cur||d<cur.dist||(d<cur.dist+5&&p.depth<cur.depth)){
+          bestArr[0]={dist:d,gx,gy,gz,fk,...info,depth:p.depth};
+        }
+      }
     }
-    if(!best||best.dist>55)return null;
-    return best;
+    const result=bestArr[0];
+    if(!result||result.dist>55)return null;
+    return result;
   },[getVP,project3D]);
 
   // ── POINTER EVENTS ─────────────────────────────────────────
