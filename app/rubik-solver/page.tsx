@@ -1,34 +1,34 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // CUBE LOGIC
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 const SOLVED_STATE: Record<string,string> = {
-  U:"WWWWWWWWW", D:"YYYYYYYYY", F:"RRRRRRRRR",
-  B:"OOOOOOOOO", L:"BBBBBBBBB", R:"GGGGGGGGG",
+  U:"WWWWWWWWW",D:"YYYYYYYYY",F:"RRRRRRRRR",
+  B:"OOOOOOOOO",L:"BBBBBBBBB",R:"GGGGGGGGG",
 };
+const CENTERS: Record<string,string> = {U:"W",D:"Y",F:"R",B:"O",L:"B",R:"G"};
 
-// Empty state (all unset = 'X')
-function makeEmptyState(): Record<string,string> {
+function makeEmpty(): Record<string,string> {
   const s: Record<string,string> = {};
-  // Centers are fixed: W,Y,R,O,B,G
-  const centers: Record<string,string> = {U:"W",D:"Y",F:"R",B:"O",L:"B",R:"G"};
   for(const face of Object.keys(SOLVED_STATE)){
     const arr = Array(9).fill("X");
-    arr[4] = centers[face]; // center locked
+    arr[4] = CENTERS[face];
     s[face] = arr.join("");
   }
   return s;
 }
 
-const COLOR_HEX: Record<string,string> = {
-  W:"#F2F0E6", Y:"#FFD200", R:"#C41230", O:"#FF6B00", B:"#0046AD", G:"#009B48", X:"#1c1c2e"
+// Vivid, saturated sticker colors — like a real Rubik's cube
+const STICKER_HEX: Record<string,string> = {
+  W:"#FFFFFF", Y:"#FFD700", R:"#CC0000", O:"#FF6600", B:"#0050C8", G:"#009000", X:"#2a2a3a"
 };
 const COLOR_LABEL: Record<string,string> = {W:"White",Y:"Yellow",R:"Red",O:"Orange",B:"Blue",G:"Green"};
 const COLOR_KEYS = ["W","Y","R","O","B","G"];
+const CUBIE_COLOR = "#111111"; // near-black plastic
 
-function hexToRgb(hex:string):[number,number,number]{
+function hexRgb(hex:string):[number,number,number]{
   return[parseInt(hex.slice(1,3),16)/255,parseInt(hex.slice(3,5),16)/255,parseInt(hex.slice(5,7),16)/255];
 }
 
@@ -51,7 +51,7 @@ function applyMove(st:Record<string,string>,mv:string):Record<string,string>{
     case"F'":{const t=[u[6],u[7],u[8]];[u[6],u[7],u[8]]=[r[0],r[3],r[6]];[r[0],r[3],r[6]]=[d[2],d[1],d[0]];[d[2],d[1],d[0]]=[l[8],l[5],l[2]];[l[8],l[5],l[2]]=t;return{U:j(u),D:j(d),F:rotateCCW(st.F),B:j(b),L:j(l),R:j(r)};}
     case"B": {const t=[u[0],u[1],u[2]];[u[0],u[1],u[2]]=[r[2],r[5],r[8]];[r[2],r[5],r[8]]=[d[8],d[7],d[6]];[d[8],d[7],d[6]]=[l[0],l[3],l[6]];[l[0],l[3],l[6]]=t;return{U:j(u),D:j(d),F:j(f),B:rotateCW(st.B),L:j(l),R:j(r)};}
     case"B'":{const t=[u[0],u[1],u[2]];[u[0],u[1],u[2]]=[l[0],l[3],l[6]];[l[0],l[3],l[6]]=[d[8],d[7],d[6]];[d[8],d[7],d[6]]=[r[2],r[5],r[8]];[r[2],r[5],r[8]]=t;return{U:j(u),D:j(d),F:j(f),B:rotateCCW(st.B),L:j(l),R:j(r)};}
-    default: return st;
+    default:return st;
   }
 }
 
@@ -62,193 +62,97 @@ function isSolved(st:Record<string,string>):boolean{
 function generateSolution(cube:Record<string,string>):string[]{
   if(isSolved(cube))return[];
   const moves=["U","U'","D","D'","L","L'","R","R'","F","F'","B","B'"];
-  const queue:{s:Record<string,string>,m:string[]}[]=[{s:cube,m:[]}];
-  const visited=new Set([JSON.stringify(cube)]);
+  const q:{s:Record<string,string>,m:string[]}[]=[{s:cube,m:[]}];
+  const vis=new Set([JSON.stringify(cube)]);
   for(let depth=0;depth<7;depth++){
-    const next:typeof queue=[];
-    for(const{s,m}of queue){
+    const nxt:typeof q=[];
+    for(const{s,m}of q){
       for(const mv of moves){
-        const ns=applyMove(s,mv);const k=JSON.stringify(ns);
-        if(!visited.has(k)){
-          const nm=[...m,mv];
-          if(isSolved(ns))return nm;
-          visited.add(k);
-          if(next.length<80000)next.push({s:ns,m:nm});
-        }
+        const ns=applyMove(s,mv),k=JSON.stringify(ns);
+        if(!vis.has(k)){const nm=[...m,mv];if(isSolved(ns))return nm;vis.add(k);if(nxt.length<80000)nxt.push({s:ns,m:nm});}
       }
     }
-    queue.length=0;queue.push(...next);
-    if(!queue.length)break;
+    q.length=0;q.push(...nxt);if(!q.length)break;
   }
   return["R","U","R'","U'","R","U","R'","U'"];
 }
 
-// Validation
 function validateCube(st:Record<string,string>):{valid:boolean,errors:string[]}{
   const errors:string[]=[];
-  // Check for unset stickers
-  let totalUnset=0;
-  for(const face of Object.keys(st)){
-    const arr=st[face].split("");
-    const unset=arr.filter(c=>c==="X").length;
-    totalUnset+=unset;
-  }
-  if(totalUnset>0){errors.push(`${totalUnset} sticker${totalUnset>1?"s":""} not painted yet.`);return{valid:false,errors};}
-  // Count colors
+  const unset=Object.values(st).join("").split("").filter(c=>c==="X").length;
+  if(unset>0){errors.push(`${unset} sticker${unset>1?"s":""} not painted yet.`);return{valid:false,errors};}
   const counts:Record<string,number>={W:0,Y:0,R:0,O:0,B:0,G:0};
-  for(const face of Object.keys(st)){
-    for(const c of st[face].split("")){
-      if(c in counts)counts[c]++;
-    }
-  }
-  for(const [c,n] of Object.entries(counts)){
-    if(n!==9)errors.push(`${COLOR_LABEL[c]}: ${n} stickers (need exactly 9).`);
-  }
+  for(const face of Object.keys(st))for(const c of st[face].split(""))if(c in counts)counts[c]++;
+  for(const[c,n]of Object.entries(counts))if(n!==9)errors.push(`${COLOR_LABEL[c]}: ${n}/9 stickers.`);
   return{valid:errors.length===0,errors};
 }
 
-// Move info
-const MOVE_AXIS:{[k:string]:{axis:[number,number,number],layer:number,dir:number,label:string}}={
-  "U": {axis:[0,1,0],layer:1, dir:-1,label:"Top face clockwise"},
-  "U'":{axis:[0,1,0],layer:1, dir:1, label:"Top face counter-clockwise"},
-  "D": {axis:[0,1,0],layer:-1,dir:1, label:"Bottom face clockwise"},
-  "D'":{axis:[0,1,0],layer:-1,dir:-1,label:"Bottom face counter-clockwise"},
-  "R": {axis:[1,0,0],layer:1, dir:-1,label:"Right face clockwise"},
-  "R'":{axis:[1,0,0],layer:1, dir:1, label:"Right face counter-clockwise"},
-  "L": {axis:[1,0,0],layer:-1,dir:1, label:"Left face clockwise"},
-  "L'":{axis:[1,0,0],layer:-1,dir:-1,label:"Left face counter-clockwise"},
-  "F": {axis:[0,0,1],layer:1, dir:-1,label:"Front face clockwise"},
-  "F'":{axis:[0,0,1],layer:1, dir:1, label:"Front face counter-clockwise"},
-  "B": {axis:[0,0,1],layer:-1,dir:1, label:"Back face clockwise"},
-  "B'":{axis:[0,0,1],layer:-1,dir:-1,label:"Back face counter-clockwise"},
+const MOVE_INFO:{[k:string]:{axis:[number,number,number],layer:number,dir:number,label:string,labelEs:string}}={
+  "U": {axis:[0,1,0],layer:1, dir:-1,label:"Top face — clockwise",labelEs:"Cara superior — horario"},
+  "U'":{axis:[0,1,0],layer:1, dir:1, label:"Top face — counter-clockwise",labelEs:"Cara superior — antihorario"},
+  "D": {axis:[0,1,0],layer:-1,dir:1, label:"Bottom face — clockwise",labelEs:"Cara inferior — horario"},
+  "D'":{axis:[0,1,0],layer:-1,dir:-1,label:"Bottom face — counter-clockwise",labelEs:"Cara inferior — antihorario"},
+  "R": {axis:[1,0,0],layer:1, dir:-1,label:"Right face — clockwise",labelEs:"Cara derecha — horario"},
+  "R'":{axis:[1,0,0],layer:1, dir:1, label:"Right face — counter-clockwise",labelEs:"Cara derecha — antihorario"},
+  "L": {axis:[1,0,0],layer:-1,dir:1, label:"Left face — clockwise",labelEs:"Cara izquierda — horario"},
+  "L'":{axis:[1,0,0],layer:-1,dir:-1,label:"Left face — counter-clockwise",labelEs:"Cara izquierda — antihorario"},
+  "F": {axis:[0,0,1],layer:1, dir:-1,label:"Front face — clockwise",labelEs:"Cara frontal — horario"},
+  "F'":{axis:[0,0,1],layer:1, dir:1, label:"Front face — counter-clockwise",labelEs:"Cara frontal — antihorario"},
+  "B": {axis:[0,0,1],layer:-1,dir:1, label:"Back face — clockwise",labelEs:"Cara trasera — horario"},
+  "B'":{axis:[0,0,1],layer:-1,dir:-1,label:"Back face — counter-clockwise",labelEs:"Cara trasera — antihorario"},
 };
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 // WEBGL ENGINE
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
 const VS=`
-attribute vec3 aPos;attribute vec3 aNorm;attribute vec3 aColor;attribute float aHighlight;
+attribute vec3 aPos;attribute vec3 aNorm;attribute vec3 aColor;attribute float aGlow;
 uniform mat4 uMVP;uniform mat4 uModel;
-varying vec3 vColor;varying vec3 vNorm;varying float vHighlight;
-void main(){gl_Position=uMVP*vec4(aPos,1.0);vColor=aColor;vNorm=normalize((uModel*vec4(aNorm,0.0)).xyz);vHighlight=aHighlight;}`;
+varying vec3 vColor;varying vec3 vNorm;varying float vGlow;
+void main(){gl_Position=uMVP*vec4(aPos,1.);vColor=aColor;vNorm=normalize((uModel*vec4(aNorm,0.)).xyz);vGlow=aGlow;}`;
 
 const FS=`
 precision mediump float;
-varying vec3 vColor;varying vec3 vNorm;varying float vHighlight;
+varying vec3 vColor;varying vec3 vNorm;varying float vGlow;
 void main(){
-  vec3 light1=normalize(vec3(2.0,3.0,4.0));
-  vec3 light2=normalize(vec3(-1.0,-1.0,-2.0));
-  float d1=max(dot(vNorm,light1),0.0);
-  float d2=max(dot(vNorm,light2),0.0)*0.3;
-  float amb=0.38;
-  vec3 col=vColor*(amb+d1*0.55+d2);
-  // highlight glow
-  col=mix(col,col+vec3(0.3,0.28,0.05)*vHighlight,vHighlight);
-  gl_FragColor=vec4(col,1.0);
+  vec3 l1=normalize(vec3(1.5,2.5,3.));
+  vec3 l2=normalize(vec3(-1.,-1.,-1.5));
+  float d1=max(dot(vNorm,l1),0.);
+  float d2=max(dot(vNorm,l2),0.)*0.25;
+  float amb=0.42;
+  vec3 col=vColor*(amb+d1*0.52+d2);
+  // highlight layer glow
+  col=mix(col,vec3(1.,.92,.3),vGlow*0.55);
+  gl_FragColor=vec4(col,1.);
 }`;
 
-function createProgram(gl:WebGLRenderingContext,vs:string,fs:string):WebGLProgram{
-  const mkShader=(type:number,src:string)=>{
-    const s=gl.createShader(type)!;gl.shaderSource(s,src);gl.compileShader(s);
-    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(s);return s;
-  };
-  const p=gl.createProgram()!;
-  gl.attachShader(p,mkShader(gl.VERTEX_SHADER,vs));
-  gl.attachShader(p,mkShader(gl.FRAGMENT_SHADER,fs));
-  gl.linkProgram(p);
-  if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw gl.getProgramInfoLog(p);
-  return p;
+function mkProg(gl:WebGLRenderingContext,vs:string,fs:string):WebGLProgram{
+  const sh=(t:number,s:string)=>{const x=gl.createShader(t)!;gl.shaderSource(x,s);gl.compileShader(x);return x;};
+  const p=gl.createProgram()!;gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);return p;
 }
 
-// mat4
-const I=():Float32Array=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
-function mul(a:Float32Array,b:Float32Array):Float32Array{
+const I4=():Float32Array=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
+function m4mul(a:Float32Array,b:Float32Array):Float32Array{
   const r=new Float32Array(16);
   for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;for(let k=0;k<4;k++)s+=a[i+k*4]*b[k+j*4];r[i+j*4]=s;}
   return r;
 }
-function perspective(fov:number,asp:number,n:number,f:number):Float32Array{
+function m4persp(fov:number,asp:number,n:number,f:number):Float32Array{
   const t=1/Math.tan(fov/2),nf=1/(n-f);
   return new Float32Array([t/asp,0,0,0,0,t,0,0,0,0,(f+n)*nf,-1,0,0,2*f*n*nf,0]);
 }
-function rotAxis(ax:number,ay:number,az:number,a:number):Float32Array{
-  const c=Math.cos(a),s=Math.sin(a),t=1-c,l=Math.sqrt(ax*ax+ay*ay+az*az);
+function m4rotAxis(ax:number,ay:number,az:number,a:number):Float32Array{
+  const c=Math.cos(a),s=Math.sin(a),t=1-c,l=Math.sqrt(ax*ax+ay*ay+az*az)||1;
   ax/=l;ay/=l;az/=l;
   return new Float32Array([t*ax*ax+c,t*ax*ay+s*az,t*ax*az-s*ay,0,t*ax*ay-s*az,t*ay*ay+c,t*ay*az+s*ax,0,t*ax*az+s*ay,t*ay*az-s*ax,t*az*az+c,0,0,0,0,1]);
 }
-
-function buildViewMatrix(camX:number,camY:number,camZ:number):Float32Array{
-  const dist=Math.sqrt(camX*camX+camY*camY+camZ*camZ);
-  const fx=-camX/dist,fy=-camY/dist,fz=-camZ/dist;
-  const rx=fz,ry=0,rz=-fx,rl=Math.sqrt(rx*rx+rz*rz)||1;
-  const rx2=rx/rl,rz2=rz/rl;
-  const ux=fy*rz2-fz*0,uy=fz*rx2-fx*rz2,uz=fx*0-fy*rx2;
-  return new Float32Array([rx2,ux,-fx,0,0,uy,-fy,0,rz2,uz,-fz,0,
-    -(rx2*camX+0*camY+rz2*camZ),-(ux*camX+uy*camY+uz*camZ),(fx*camX+fy*camY+fz*camZ),1]);
-}
-
-// Sticker geometry: cubie at (gx,gy,gz), build faces with sticker color overlay
-function buildCubieGeo(
-  gx:number,gy:number,gz:number,
-  faceColors:Record<string,string>,
-  highlightFace:string,
-  hoverStickerKey:string,
-  gap:number
-):Float32Array{
-  const S=0.48,ST=0.36,O_=0.001;
-  const cx=gx*gap,cy=gy*gap,cz=gz*gap;
-  const BLACK:[number,number,number]=[0.07,0.07,0.09];
-  const verts:number[]=[];
-
-  function quad(
-    p0:[number,number,number],p1:[number,number,number],
-    p2:[number,number,number],p3:[number,number,number],
-    n:[number,number,number],col:[number,number,number],hl:number
-  ){
-    for(const p of[p0,p1,p2,p0,p2,p3])verts.push(...p,...n,...col,hl);
-  }
-
-  const FACES=[
-    {fk:"U",n:[0,1,0]  as[number,number,number],vis:gy===1,
-     corners:[[-S,S,-S],[S,S,-S],[S,S,S],[-S,S,S]],
-     stk:[[-ST,S,-ST],[ST,S,-ST],[ST,S,ST],[-ST,S,ST]]},
-    {fk:"D",n:[0,-1,0] as[number,number,number],vis:gy===-1,
-     corners:[[-S,-S,S],[S,-S,S],[S,-S,-S],[-S,-S,-S]],
-     stk:[[-ST,-S,ST],[ST,-S,ST],[ST,-S,-ST],[-ST,-S,-ST]]},
-    {fk:"F",n:[0,0,1]  as[number,number,number],vis:gz===1,
-     corners:[[-S,-S,S],[S,-S,S],[S,S,S],[-S,S,S]],
-     stk:[[-ST,-ST,S],[ST,-ST,S],[ST,ST,S],[-ST,ST,S]]},
-    {fk:"B",n:[0,0,-1] as[number,number,number],vis:gz===-1,
-     corners:[[S,-S,-S],[-S,-S,-S],[-S,S,-S],[S,S,-S]],
-     stk:[[ST,-ST,-S],[-ST,-ST,-S],[-ST,ST,-S],[ST,ST,-S]]},
-    {fk:"R",n:[1,0,0]  as[number,number,number],vis:gx===1,
-     corners:[[S,-S,S],[S,-S,-S],[S,S,-S],[S,S,S]],
-     stk:[[S,-ST,ST],[S,-ST,-ST],[S,ST,-ST],[S,ST,ST]]},
-    {fk:"L",n:[-1,0,0] as[number,number,number],vis:gx===-1,
-     corners:[[-S,-S,-S],[-S,-S,S],[-S,S,S],[-S,S,-S]],
-     stk:[[-S,-ST,-ST],[-S,-ST,ST],[-S,ST,ST],[-S,ST,-ST]]},
-  ];
-
-  for(const face of FACES){
-    const c=face.corners.map(([x,y,z])=>[cx+x,cy+y,cz+z] as[number,number,number]);
-    quad(c[0],c[1],c[2],c[3],face.n,BLACK,0);
-    if(face.vis && faceColors[face.fk]){
-      const rgb=hexToRgb(faceColors[face.fk]);
-      const sc=face.stk.map(([x,y,z])=>[cx+x,cy+y,cz+z] as[number,number,number]);
-      const off=face.n.map(v=>v*O_) as[number,number,number];
-      const isHl=highlightFace===face.fk?1:0;
-      const skey=`${gx},${gy},${gz},${face.fk}`;
-      const isHov=hoverStickerKey===skey?0.5:0;
-      quad(
-        [sc[0][0]+off[0],sc[0][1]+off[1],sc[0][2]+off[2]],
-        [sc[1][0]+off[0],sc[1][1]+off[1],sc[1][2]+off[2]],
-        [sc[2][0]+off[0],sc[2][1]+off[1],sc[2][2]+off[2]],
-        [sc[3][0]+off[0],sc[3][1]+off[1],sc[3][2]+off[2]],
-        face.n,rgb,Math.max(isHl,isHov)
-      );
-    }
-  }
-  return new Float32Array(verts);
+function mkView(cx:number,cy:number,cz:number):Float32Array{
+  const d=Math.sqrt(cx*cx+cy*cy+cz*cz)||1;
+  const fx=-cx/d,fy=-cy/d,fz=-cz/d;
+  const rl=Math.sqrt(fz*fz+fx*fx)||1;
+  const rx=fz/rl,rz=-fx/rl;
+  const ux=fy*rz,uy=fz*rx-fx*rz,uz=-fy*rx;
+  return new Float32Array([rx,ux,-fx,0,0,uy,-fy,0,rz,uz,-fz,0,-(rx*cx+0*cy+rz*cz),-(ux*cx+uy*cy+uz*cz),(fx*cx+fy*cy+fz*cz),1]);
 }
 
 function getStickerInfo(gx:number,gy:number,gz:number,fk:string):{face:string,idx:number}{
@@ -259,746 +163,631 @@ function getStickerInfo(gx:number,gy:number,gz:number,fk:string):{face:string,id
   else if(fk==="B"){row=1-gy;col=1-gx;}
   else if(fk==="R"){row=1-gy;col=1-gz;}
   else{row=1-gy;col=gz+1;}
-  return{face:fk,idx:row*3+col};
+  return{face:fk,idx:Math.max(0,Math.min(8,row*3+col))};
 }
 
 function getCubieColors(gx:number,gy:number,gz:number,st:Record<string,string>):Record<string,string>{
   const c:Record<string,string>={};
-  if(gy===1){const{idx}=getStickerInfo(gx,gy,gz,"U");c.U=COLOR_HEX[st.U[idx]]??COLOR_HEX.X;}
-  if(gy===-1){const{idx}=getStickerInfo(gx,gy,gz,"D");c.D=COLOR_HEX[st.D[idx]]??COLOR_HEX.X;}
-  if(gz===1){const{idx}=getStickerInfo(gx,gy,gz,"F");c.F=COLOR_HEX[st.F[idx]]??COLOR_HEX.X;}
-  if(gz===-1){const{idx}=getStickerInfo(gx,gy,gz,"B");c.B=COLOR_HEX[st.B[idx]]??COLOR_HEX.X;}
-  if(gx===1){const{idx}=getStickerInfo(gx,gy,gz,"R");c.R=COLOR_HEX[st.R[idx]]??COLOR_HEX.X;}
-  if(gx===-1){const{idx}=getStickerInfo(gx,gy,gz,"L");c.L=COLOR_HEX[st.L[idx]]??COLOR_HEX.X;}
+  const pairs:[boolean,string][]=[
+    [gy===1,"U"],[gy===-1,"D"],[gz===1,"F"],[gz===-1,"B"],[gx===1,"R"],[gx===-1,"L"]
+  ];
+  for(const[vis,fk]of pairs){
+    if(vis){const{idx}=getStickerInfo(gx,gy,gz,fk);c[fk]=STICKER_HEX[st[fk]?.[idx]??"X"]??STICKER_HEX.X;}
+  }
   return c;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════
-type Phase = "paint"|"solving"|"done";
+function buildGeo(gx:number,gy:number,gz:number,faceColors:Record<string,string>,hlFace:string,gap:number):Float32Array{
+  const S=0.46,ST=0.35,OFF=0.002;
+  const cx=gx*gap,cy=gy*gap,cz=gz*gap;
+  const [br,bg,bb]=hexRgb(CUBIE_COLOR);
+  const verts:number[]=[];
+
+  function quad(ps:[number,number,number][],n:[number,number,number],col:[number,number,number],glow:number){
+    const tris=[[0,1,2],[0,2,3]];
+    for(const tri of tris)for(const i of tri)verts.push(...ps[i],...n,...col,glow);
+  }
+
+  const FACES=[
+    {fk:"U",n:[0,1,0] as[number,number,number],vis:gy===1,
+     body:[[-S,S,-S],[S,S,-S],[S,S,S],[-S,S,S]] as[number,number,number][],
+     stk:[[-ST,S+OFF,-ST],[ST,S+OFF,-ST],[ST,S+OFF,ST],[-ST,S+OFF,ST]] as[number,number,number][]},
+    {fk:"D",n:[0,-1,0] as[number,number,number],vis:gy===-1,
+     body:[[-S,-S,S],[S,-S,S],[S,-S,-S],[-S,-S,-S]] as[number,number,number][],
+     stk:[[-ST,-S-OFF,ST],[ST,-S-OFF,ST],[ST,-S-OFF,-ST],[-ST,-S-OFF,-ST]] as[number,number,number][]},
+    {fk:"F",n:[0,0,1] as[number,number,number],vis:gz===1,
+     body:[[-S,-S,S],[S,-S,S],[S,S,S],[-S,S,S]] as[number,number,number][],
+     stk:[[-ST,-ST,S+OFF],[ST,-ST,S+OFF],[ST,ST,S+OFF],[-ST,ST,S+OFF]] as[number,number,number][]},
+    {fk:"B",n:[0,0,-1] as[number,number,number],vis:gz===-1,
+     body:[[S,-S,-S],[-S,-S,-S],[-S,S,-S],[S,S,-S]] as[number,number,number][],
+     stk:[[ST,-ST,-S-OFF],[-ST,-ST,-S-OFF],[-ST,ST,-S-OFF],[ST,ST,-S-OFF]] as[number,number,number][]},
+    {fk:"R",n:[1,0,0] as[number,number,number],vis:gx===1,
+     body:[[S,-S,S],[S,-S,-S],[S,S,-S],[S,S,S]] as[number,number,number][],
+     stk:[[S+OFF,-ST,ST],[S+OFF,-ST,-ST],[S+OFF,ST,-ST],[S+OFF,ST,ST]] as[number,number,number][]},
+    {fk:"L",n:[-1,0,0] as[number,number,number],vis:gx===-1,
+     body:[[-S,-S,-S],[-S,-S,S],[-S,S,S],[-S,S,-S]] as[number,number,number][],
+     stk:[[-S-OFF,-ST,-ST],[-S-OFF,-ST,ST],[-S-OFF,ST,ST],[-S-OFF,ST,-ST]] as[number,number,number][]},
+  ];
+
+  for(const face of FACES){
+    const body=face.body.map(([x,y,z])=>[cx+x,cy+y,cz+z] as[number,number,number]);
+    quad(body,face.n,[br,bg,bb],0);
+    if(face.vis && faceColors[face.fk]){
+      const rgb=hexRgb(faceColors[face.fk]);
+      const stk=face.stk.map(([x,y,z])=>[cx+x,cy+y,cz+z] as[number,number,number]);
+      const glow=hlFace===face.fk?1:0;
+      quad(stk,face.n,rgb,glow);
+    }
+  }
+  return new Float32Array(verts);
+}
+
+// ═══════════════════════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════════════════════
+type Lang="en"|"es"|"pt"|"fr"|"de"|"zh";
+const LANGS:{code:Lang,flag:string,name:string}[]=[
+  {code:"en",flag:"🇺🇸",name:"English"},
+  {code:"es",flag:"🇪🇸",name:"Español"},
+  {code:"pt",flag:"🇧🇷",name:"Português"},
+  {code:"fr",flag:"🇫🇷",name:"Français"},
+  {code:"de",flag:"🇩🇪",name:"Deutsch"},
+  {code:"zh",flag:"🇨🇳",name:"中文"},
+];
+
+const T:{[k:string]:{[l in Lang]:string}}={
+  tagline:{en:"Scan, paint & solve your Rubik's Cube",es:"Fotografía, pinta y resuelve tu Cubo Rubik",pt:"Fotografe, pinte e resolva seu Cubo Rubik",fr:"Photographiez, peignez et résolvez votre Rubik's Cube",de:"Fotografieren, malen und Ihren Rubik's Cube lösen",zh:"拍照、涂色并求解您的魔方"},
+  tapToPaint:{en:"Select a color · Tap stickers to paint · Drag to rotate",es:"Selecciona un color · Toca stickers para pintar · Arrastra para rotar",pt:"Selecione uma cor · Toque nos adesivos para pintar · Arraste para girar",fr:"Sélectionnez une couleur · Appuyez sur les autocollants · Faites glisser pour faire pivoter",de:"Farbe wählen · Sticker antippen · Ziehen zum Drehen",zh:"选择颜色 · 点击贴纸上色 · 拖动旋转"},
+  solve:{en:"Solve",es:"Resolver",pt:"Resolver",fr:"Résoudre",de:"Lösen",zh:"求解"},
+  reset:{en:"Reset",es:"Reiniciar",pt:"Reiniciar",fr:"Réinitialiser",de:"Zurücksetzen",zh:"重置"},
+  undo:{en:"Undo",es:"Deshacer",pt:"Desfazer",fr:"Annuler",de:"Rückgängig",zh:"撤销"},
+  fillSolved:{en:"Auto-fill (solved)",es:"Rellenar (resuelto)",pt:"Preencher (resolvido)",fr:"Remplir (résolu)",de:"Auto-ausfüllen",zh:"自动填充"},
+  ready:{en:"Ready to solve!",es:"¡Listo para resolver!",pt:"Pronto para resolver!",fr:"Prêt à résoudre!",de:"Bereit zum Lösen!",zh:"准备好求解！"},
+  stepOf:{en:"Step",es:"Paso",pt:"Passo",fr:"Étape",de:"Schritt",zh:"步骤"},
+  of:{en:"of",es:"de",pt:"de",fr:"sur",de:"von",zh:"共"},
+  prev:{en:"Previous",es:"Anterior",pt:"Anterior",fr:"Précédent",de:"Zurück",zh:"上一步"},
+  next:{en:"Next",es:"Siguiente",pt:"Próximo",fr:"Suivant",de:"Weiter",zh:"下一步"},
+  play:{en:"Play",es:"Play",pt:"Reproduzir",fr:"Lire",de:"Abspielen",zh:"播放"},
+  pause:{en:"Pause",es:"Pausa",pt:"Pausar",fr:"Pause",de:"Pause",zh:"暂停"},
+  speed:{en:"Speed",es:"Velocidad",pt:"Velocidade",fr:"Vitesse",de:"Geschwindigkeit",zh:"速度"},
+  solved:{en:"Cube solved! 🎉",es:"¡Cubo resuelto! 🎉",pt:"Cubo resolvido! 🎉",fr:"Cube résolu! 🎉",de:"Würfel gelöst! 🎉",zh:"魔方已解! 🎉"},
+  aiExplain:{en:"Explain with AI",es:"Explicar con IA",pt:"Explicar com IA",fr:"Expliquer avec IA",de:"Mit KI erklären",zh:"用AI解释"},
+  back:{en:"← Back to edit",es:"← Volver a editar",pt:"← Voltar para editar",fr:"← Retour à l'édition",de:"← Zurück zur Bearbeitung",zh:"← 返回编辑"},
+};
+const tx=(k:string,l:Lang)=>T[k]?.[l]??T[k]?.en??k;
 
 export default function RubikSolverPage(){
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const glRef = useRef<WebGLRenderingContext|null>(null);
-  const progRef = useRef<WebGLProgram|null>(null);
-  const rafRef = useRef<number>(0);
+  const canvasRef=useRef<HTMLCanvasElement>(null);
+  const glRef=useRef<WebGLRenderingContext|null>(null);
+  const progRef=useRef<WebGLProgram|null>(null);
 
-  // State that drives rendering (refs for perf, useState for UI)
-  const stateRef = useRef<Record<string,string>>(makeEmptyState());
-  const orbitRef = useRef({theta:0.55, phi:0.42, zoom:7.0});
-  const animRef = useRef<{move:string,t:number,speed:number}|null>(null);
-  const solveQueueRef = useRef<string[]>([]);
-  const highlightFaceRef = useRef<string>("");
-  const hoverKeyRef = useRef<string>("");
+  const stateRef=useRef<Record<string,string>>(makeEmpty());
+  const orbitRef=useRef({theta:0.6,phi:0.38,zoom:7.2});
+  const animRef=useRef<{move:string,t:number,spd:number}|null>(null);
+  const queueRef=useRef<string[]>([]);
+  const hlFaceRef=useRef("");
+  const isPlayingRef=useRef(false);
+  const speedRef=useRef(1.0);
+  const pointerRef=useRef({down:false,sx:0,sy:0,lx:0,ly:0,moved:false});
 
-  // Drag tracking
-  const pointerRef = useRef({down:false,startX:0,startY:0,lastX:0,lastY:0,moved:false,touchDist:0});
+  const [cubeState,setCubeState]=useState<Record<string,string>>(makeEmpty());
+  const [selColor,setSelColor]=useState("R");
+  const [phase,setPhase]=useState<"paint"|"solving"|"done">("paint");
+  const [solution,setSolution]=useState<string[]>([]);
+  const [step,setStep]=useState(0);
+  const [playing,setPlaying]=useState(false);
+  const [speed,setSpeed]=useState(1.0);
+  const [lang,setLang]=useState<Lang>("en");
+  const [showLangMenu,setShowLangMenu]=useState(false);
+  const [validation,setValidation]=useState<{valid:boolean,errors:string[]}>({valid:false,errors:[]});
+  const [undoStack,setUndoStack]=useState<Record<string,string>[]>([]);
+  const [animating,setAnimating]=useState(false);
+  const [aiText,setAiText]=useState("");
+  const [aiLoading,setAiLoading]=useState(false);
+  const stepRef=useRef(0);
 
-  // React state
-  const [cubeState, setCubeState] = useState<Record<string,string>>(makeEmptyState());
-  const [selectedColor, setSelectedColor] = useState<string>("R");
-  const [phase, setPhase] = useState<Phase>("paint");
-  const [solution, setSolution] = useState<string[]>([]);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1.0); // 0.5=slow, 1=normal, 2=fast
-  const [lang, setLang] = useState<"es"|"en">("es");
-  const [validation, setValidation] = useState<{valid:boolean,errors:string[]}>({valid:false,errors:[]});
-  const [aiText, setAiText] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [undoStack, setUndoStack] = useState<Record<string,string>[]>([]);
-  const [hoverSticker, setHoverSticker] = useState<string>("");
-  const [animating, setAnimating] = useState(false);
-  const isPlayingRef = useRef(false);
-  const speedRef = useRef(1.0);
-
-  const syncCubeState = useCallback((st:Record<string,string>)=>{
-    stateRef.current = st;
-    setCubeState({...st});
-    setValidation(validateCube(st));
+  const syncState=useCallback((st:Record<string,string>)=>{
+    stateRef.current=st;setCubeState({...st});setValidation(validateCube(st));
   },[]);
 
-  // Init
-  useEffect(()=>{
-    const fresh = makeEmptyState();
-    stateRef.current = fresh;
-    setCubeState({...fresh});
-    setValidation(validateCube(fresh));
-  },[]);
+  useEffect(()=>{syncState(makeEmpty());},[]);
+  useEffect(()=>{speedRef.current=speed;},[speed]);
+  useEffect(()=>{stepRef.current=step;},[step]);
 
-  // ── WEBGL INIT ─────────────────────────────────────────────
+  // ── WEBGL INIT ─────────────────────────
   useEffect(()=>{
-    const canvas = canvasRef.current!;
-    const gl = canvas.getContext("webgl",{antialias:true,alpha:false,preserveDrawingBuffer:false});
-    if(!gl){return;}
-    glRef.current = gl;
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.BACK);
-    gl.clearColor(0.06,0.07,0.13,1);
-
-    const prog = createProgram(gl,VS,FS);
-    gl.useProgram(prog);
-    progRef.current = prog;
+    const canvas=canvasRef.current!;
+    const gl=canvas.getContext("webgl",{antialias:true,alpha:false});
+    if(!gl)return;
+    glRef.current=gl;
+    gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);
+    // Sky-blue-ish background like the reference app
+    gl.clearColor(0.56,0.75,0.95,1);
+    progRef.current=mkProg(gl,VS,FS);
+    gl.useProgram(progRef.current);
 
     const resize=()=>{
       const dpr=Math.min(window.devicePixelRatio,2);
-      canvas.width=canvas.clientWidth*dpr;
-      canvas.height=canvas.clientHeight*dpr;
+      canvas.width=canvas.clientWidth*dpr;canvas.height=canvas.clientHeight*dpr;
       gl.viewport(0,0,canvas.width,canvas.height);
     };
-    resize();
-    window.addEventListener("resize",resize);
+    resize();window.addEventListener("resize",resize);
 
-    let rafId:number;
-    const loop=()=>{rafId=requestAnimationFrame(loop);renderFrame();};
+    let raf:number;
+    const loop=()=>{raf=requestAnimationFrame(loop);draw();};
     loop();
-    return()=>{cancelAnimationFrame(rafId);window.removeEventListener("resize",resize);};
+    return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",resize);};
   },[]);
 
-  // ── RENDER ─────────────────────────────────────────────────
-  const renderFrame = useCallback(()=>{
+  // ── DRAW ────────────────────────────────
+  const draw=useCallback(()=>{
     const gl=glRef.current,prog=progRef.current,canvas=canvasRef.current;
     if(!gl||!prog||!canvas)return;
 
-    // Advance animation
-    let moveRotMat:Float32Array|null=null;
-    let moveAxisVec:[number,number,number]=[0,1,0];
-    let moveLayer=1;
+    let mrMat:Float32Array|null=null;
+    let mrAxis:[number,number,number]=[0,1,0];
+    let mrLayer=1;
 
     if(animRef.current){
-      const anim=animRef.current;
-      anim.t=Math.min(anim.t+anim.speed,1);
-      const ease=anim.t<0.5?2*anim.t*anim.t:-1+(4-2*anim.t)*anim.t;
-      const info=MOVE_AXIS[anim.move];
-      if(info){
-        moveAxisVec=info.axis;moveLayer=info.layer;
-        const angle=info.dir*(Math.PI/2)*ease;
-        moveRotMat=rotAxis(info.axis[0],info.axis[1],info.axis[2],angle);
-      }
-      if(anim.t>=1){
-        // finalize
-        const completedMove=anim.move;
-        stateRef.current=applyMove(stateRef.current,completedMove);
+      const a=animRef.current;
+      a.t=Math.min(a.t+a.spd,1);
+      const e=a.t<0.5?2*a.t*a.t:-1+(4-2*a.t)*a.t;
+      const info=MOVE_INFO[a.move];
+      if(info){mrAxis=info.axis;mrLayer=info.layer;mrMat=m4rotAxis(info.axis[0],info.axis[1],info.axis[2],info.dir*(Math.PI/2)*e);}
+      if(a.t>=1){
+        stateRef.current=applyMove(stateRef.current,a.move);
         setCubeState({...stateRef.current});
-        animRef.current=null;
-        highlightFaceRef.current="";
+        animRef.current=null;hlFaceRef.current="";
 
-        if(solveQueueRef.current.length>0){
-          const next=solveQueueRef.current.shift()!;
-          setCurrentStep(s=>s+1);
-          const delay=isPlayingRef.current?Math.max(50,150/speedRef.current):99999;
-          setTimeout(()=>{
-            if(isPlayingRef.current||solveQueueRef.current.length===0){
-              const info2=MOVE_AXIS[next];
-              if(info2)highlightFaceRef.current=["U","D"].includes(next.replace("'",""))?
-                (next.replace("'","")):(next.replace("'",""));
-              animRef.current={move:next,t:0,speed:0.022*speedRef.current};
-              setAnimating(true);
-            }
-          },isPlayingRef.current?delay:0);
+        if(queueRef.current.length>0){
+          const nxt=queueRef.current.shift()!;
+          const newStep=stepRef.current+1;
+          setStep(newStep);stepRef.current=newStep;
+          const delay=isPlayingRef.current?Math.max(60,160/speedRef.current):0;
+          const doNext=()=>{
+            if(!isPlayingRef.current&&queueRef.current.length>0)return;
+            const i2=MOVE_INFO[nxt];if(i2)hlFaceRef.current=nxt.replace("'","");
+            animRef.current={move:nxt,t:0,spd:0.02*speedRef.current};
+          };
+          if(delay>0)setTimeout(doNext,delay);else doNext();
         }else{
-          setAnimating(false);
-          setIsPlaying(false);
-          isPlayingRef.current=false;
-          setPhase("done");
+          setAnimating(false);setPlaying(false);isPlayingRef.current=false;
+          if(stepRef.current>=solution.length)setPhase("done");
         }
       }
     }
 
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-
-    const asp=canvas.width/canvas.height;
-    const {theta,phi,zoom}=orbitRef.current;
+    const{theta,phi,zoom}=orbitRef.current;
     const camX=zoom*Math.sin(phi)*Math.sin(theta);
     const camY=zoom*Math.cos(phi);
     const camZ=zoom*Math.sin(phi)*Math.cos(theta);
-
-    const proj=perspective(Math.PI/5,asp,0.1,100);
-    const view=buildViewMatrix(camX,camY,camZ);
-    const vp=mul(proj,view);
+    const asp=canvas.width/canvas.height;
+    const vp=m4mul(m4persp(Math.PI/5,asp,0.1,100),mkView(camX,camY,camZ));
 
     const uMVP=gl.getUniformLocation(prog,"uMVP");
     const uModel=gl.getUniformLocation(prog,"uModel");
     const aPos=gl.getAttribLocation(prog,"aPos");
     const aNorm=gl.getAttribLocation(prog,"aNorm");
     const aColor=gl.getAttribLocation(prog,"aColor");
-    const aHighlight=gl.getAttribLocation(prog,"aHighlight");
-    const STRIDE=10*4;
-    const GAP=1.06;
+    const aGlow=gl.getAttribLocation(prog,"aGlow");
+    const STRIDE=10*4,GAP=1.06;
 
     for(let gx=-1;gx<=1;gx++)for(let gy=-1;gy<=1;gy++)for(let gz=-1;gz<=1;gz++){
-      const colors=getCubieColors(gx,gy,gz,stateRef.current);
-      const hlFace=highlightFaceRef.current;
-      const geo=buildCubieGeo(gx,gy,gz,colors,hlFace,hoverKeyRef.current,GAP);
-
-      let model=I();
-      if(moveRotMat){
-        const axIdx=moveAxisVec[0]!==0?0:moveAxisVec[1]!==0?1:2;
-        const gArr=[gx,gy,gz];
-        if(Math.round(gArr[axIdx])===moveLayer)model=mul(moveRotMat,model);
+      const cols=getCubieColors(gx,gy,gz,stateRef.current);
+      const geo=buildGeo(gx,gy,gz,cols,hlFaceRef.current,GAP);
+      let model=I4();
+      if(mrMat){
+        const ai=mrAxis[0]!==0?0:mrAxis[1]!==0?1:2;
+        if(Math.round([gx,gy,gz][ai])===mrLayer)model=m4mul(mrMat,model);
       }
-      const mvp=mul(vp,model);
-      gl.uniformMatrix4fv(uMVP,false,mvp);
+      gl.uniformMatrix4fv(uMVP,false,m4mul(vp,model));
       gl.uniformMatrix4fv(uModel,false,model);
-
       const buf=gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER,buf);
-      gl.bufferData(gl.ARRAY_BUFFER,geo,gl.DYNAMIC_DRAW);
-
+      gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,geo,gl.DYNAMIC_DRAW);
       gl.enableVertexAttribArray(aPos);gl.vertexAttribPointer(aPos,3,gl.FLOAT,false,STRIDE,0);
       gl.enableVertexAttribArray(aNorm);gl.vertexAttribPointer(aNorm,3,gl.FLOAT,false,STRIDE,12);
       gl.enableVertexAttribArray(aColor);gl.vertexAttribPointer(aColor,3,gl.FLOAT,false,STRIDE,24);
-      gl.enableVertexAttribArray(aHighlight);gl.vertexAttribPointer(aHighlight,1,gl.FLOAT,false,STRIDE,36);
-
+      gl.enableVertexAttribArray(aGlow);gl.vertexAttribPointer(aGlow,1,gl.FLOAT,false,STRIDE,36);
       gl.drawArrays(gl.TRIANGLES,0,geo.length/10);
       gl.deleteBuffer(buf);
     }
-  },[]);
+  },[solution]);
 
-  // ── PROJECTION HELPER ──────────────────────────────────────
-  const getVP = useCallback(()=>{
-    const canvas=canvasRef.current!;
+  // ── PROJECTION ──────────────────────────
+  const project=(wx:number,wy:number,wz:number,w:number,h:number)=>{
     const{theta,phi,zoom}=orbitRef.current;
-    const camX=zoom*Math.sin(phi)*Math.sin(theta);
-    const camY=zoom*Math.cos(phi);
-    const camZ=zoom*Math.sin(phi)*Math.cos(theta);
-    const asp=canvas.clientWidth/canvas.clientHeight;
-    return{vp:mul(perspective(Math.PI/5,asp,0.1,100),buildViewMatrix(camX,camY,camZ)),camX,camY,camZ};
-  },[]);
-
-  const project3D = useCallback((wx:number,wy:number,wz:number,w:number,h:number):{sx:number,sy:number,depth:number}|null=>{
-    const{vp}=getVP();
-    const clip=[
-      vp[0]*wx+vp[4]*wy+vp[8]*wz+vp[12],
-      vp[1]*wx+vp[5]*wy+vp[9]*wz+vp[13],
-      vp[2]*wx+vp[6]*wy+vp[10]*wz+vp[14],
-      vp[3]*wx+vp[7]*wy+vp[11]*wz+vp[15],
-    ];
+    const camX=zoom*Math.sin(phi)*Math.sin(theta),camY=zoom*Math.cos(phi),camZ=zoom*Math.sin(phi)*Math.cos(theta);
+    const asp=w/h;
+    const vp=m4mul(m4persp(Math.PI/5,asp,0.1,100),mkView(camX,camY,camZ));
+    const clip=[vp[0]*wx+vp[4]*wy+vp[8]*wz+vp[12],vp[1]*wx+vp[5]*wy+vp[9]*wz+vp[13],vp[2]*wx+vp[6]*wy+vp[10]*wz+vp[14],vp[3]*wx+vp[7]*wy+vp[11]*wz+vp[15]];
     if(clip[3]<=0)return null;
     return{sx:((clip[0]/clip[3])+1)/2*w,sy:((1-clip[1]/clip[3]))/2*h,depth:clip[2]/clip[3]};
-  },[getVP]);
+  };
 
-  // ── FIND STICKER UNDER CURSOR ──────────────────────────────
-  const findSticker = useCallback((cx:number,cy:number,w:number,h:number):{gx:number,gy:number,gz:number,fk:string,face:string,idx:number,dist:number,depth:number}|null=>{
-    const{camX,camY,camZ}=getVP();
+  const findSticker=(cx:number,cy:number,w:number,h:number)=>{
+    const{theta,phi,zoom}=orbitRef.current;
+    const camX=zoom*Math.sin(phi)*Math.sin(theta),camY=zoom*Math.cos(phi),camZ=zoom*Math.sin(phi)*Math.cos(theta);
     const GAP=1.06;
-    // Use array to avoid closure type narrowing issues
-    const bestArr:{dist:number,gx:number,gy:number,gz:number,fk:string,face:string,idx:number,depth:number}[]=[];
+    type Hit={dist:number,gx:number,gy:number,gz:number,fk:string,face:string,idx:number,depth:number};
+    const hits:Hit[]=[];
 
     for(let gx=-1;gx<=1;gx++)for(let gy=-1;gy<=1;gy++)for(let gz=-1;gz<=1;gz++){
       const wx=gx*GAP,wy=gy*GAP,wz=gz*GAP;
-      const candidates:[string,number,number,number,number,number,number][]=[
-        ["U",wx,wy+0.49,wz,0,1,0],
-        ["D",wx,wy-0.49,wz,0,-1,0],
-        ["F",wx,wy,wz+0.49,0,0,1],
-        ["B",wx,wy,wz-0.49,0,0,-1],
-        ["R",wx+0.49,wy,wz,1,0,0],
-        ["L",wx-0.49,wy,wz,-1,0,0],
+      const faceList:[string,number,number,number,number,number,number,boolean][]=[
+        ["U",wx,wy+0.48,wz,0,1,0,gy===1],
+        ["D",wx,wy-0.48,wz,0,-1,0,gy===-1],
+        ["F",wx,wy,wz+0.48,0,0,1,gz===1],
+        ["B",wx,wy,wz-0.48,0,0,-1,gz===-1],
+        ["R",wx+0.48,wy,wz,1,0,0,gx===1],
+        ["L",wx-0.48,wy,wz,-1,0,0,gx===-1],
       ];
-      for(const[fk,sx,sy,sz,nx,ny,nz] of candidates){
-        // Only render visible faces
-        if(fk==="U"&&gy!==1)continue;if(fk==="D"&&gy!==-1)continue;
-        if(fk==="F"&&gz!==1)continue;if(fk==="B"&&gz!==-1)continue;
-        if(fk==="R"&&gx!==1)continue;if(fk==="L"&&gx!==-1)continue;
-        // Backface cull
+      for(const[fk,sx,sy,sz,nx,ny,nz,vis] of faceList){
+        if(!vis)continue;
         const dot=nx*(wx-camX)+ny*(wy-camY)+nz*(wz-camZ);
         if(dot>=0)continue;
-        const p=project3D(sx,sy,sz,w,h);
-        if(!p)continue;
+        const p=project(sx,sy,sz,w,h);if(!p)continue;
         const d=Math.sqrt((p.sx-cx)**2+(p.sy-cy)**2);
         const info=getStickerInfo(gx,gy,gz,fk);
-        const cur=bestArr[0];
-        if(!cur||d<cur.dist||(d<cur.dist+5&&p.depth<cur.depth)){
-          bestArr[0]={dist:d,gx,gy,gz,fk,...info,depth:p.depth};
+        const cur=hits[0];
+        if(!cur||d<cur.dist||(Math.abs(d-cur.dist)<8&&p.depth<cur.depth)){
+          hits[0]={dist:d,gx,gy,gz,fk,...info,depth:p.depth};
         }
       }
     }
-    const result=bestArr[0];
-    if(!result||result.dist>55)return null;
-    return result;
-  },[getVP,project3D]);
+    const h0=hits[0];
+    return(h0&&h0.dist<65)?h0:null;
+  };
 
-  // ── POINTER EVENTS ─────────────────────────────────────────
+  // ── POINTER EVENTS ──────────────────────
   useEffect(()=>{
     const canvas=canvasRef.current!;
-    const DRAG_THRESHOLD=6;
+    const THRESH=7;
 
-    const getXY=(e:MouseEvent|Touch)=>{
-      const r=canvas.getBoundingClientRect();
-      return{x:e.clientX-r.left,y:e.clientY-r.top,raw:{x:e.clientX,y:e.clientY}};
+    const onDown=(e:MouseEvent|TouchEvent)=>{
+      const t=e instanceof MouseEvent?e:e.touches[0];
+      pointerRef.current={down:true,sx:t.clientX,sy:t.clientY,lx:t.clientX,ly:t.clientY,moved:false};
     };
-
-    // Mouse hover
-    const onMouseMove=(e:MouseEvent)=>{
-      if(pointerRef.current.down){
-        const dx=e.clientX-pointerRef.current.lastX;
-        const dy=e.clientY-pointerRef.current.lastY;
-        const tdx=e.clientX-pointerRef.current.startX;
-        const tdy=e.clientY-pointerRef.current.startY;
-        if(Math.sqrt(tdx*tdx+tdy*tdy)>DRAG_THRESHOLD)pointerRef.current.moved=true;
-        if(pointerRef.current.moved){
-          orbitRef.current.theta-=dx*0.007;
-          orbitRef.current.phi=Math.max(0.12,Math.min(Math.PI-0.12,orbitRef.current.phi+dy*0.007));
-        }
-        pointerRef.current.lastX=e.clientX;pointerRef.current.lastY=e.clientY;
-      }else{
-        // hover
-        if(phase==="paint"){
-          const r=canvas.getBoundingClientRect();
-          const hit=findSticker(e.clientX-r.left,e.clientY-r.top,canvas.clientWidth,canvas.clientHeight);
-          const key=hit?`${hit.gx},${hit.gy},${hit.gz},${hit.fk}`:"";
-          hoverKeyRef.current=key;
-          setHoverSticker(key);
-          canvas.style.cursor=hit?"pointer":"default";
-        }
-      }
-    };
-
-    const onMouseDown=(e:MouseEvent)=>{
-      pointerRef.current={down:true,startX:e.clientX,startY:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false,touchDist:0};
-    };
-
-    const onMouseUp=(e:MouseEvent)=>{
+    const onMove=(e:MouseEvent|TouchEvent)=>{
       if(!pointerRef.current.down)return;
-      const wasMove=pointerRef.current.moved;
-      pointerRef.current.down=false;
-      if(!wasMove&&phase==="paint"&&!animating){
-        const r=canvas.getBoundingClientRect();
-        const hit=findSticker(e.clientX-r.left,e.clientY-r.top,canvas.clientWidth,canvas.clientHeight);
-        if(hit&&hit.face!==""){
-          // Don't paint center sticker
-          if(hit.idx===4)return;
-          const prev={...stateRef.current};
-          setUndoStack(s=>[...s.slice(-19),JSON.parse(JSON.stringify(prev))]);
-          const arr=stateRef.current[hit.face].split("");
-          arr[hit.idx]=selectedColor;
-          const next={...stateRef.current,[hit.face]:arr.join("")};
-          syncCubeState(next);
-        }
+      if(e instanceof TouchEvent&&e.touches.length===2){
+        // pinch zoom
+        const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+        if(pointerRef.current.moved)orbitRef.current.zoom=Math.max(4,Math.min(12,orbitRef.current.zoom-(d-pointerRef.current.ly)*0.02));
+        pointerRef.current.ly=d;return;
       }
-    };
-
-    // Scroll = zoom
-    const onWheel=(e:WheelEvent)=>{
-      e.preventDefault();
-      orbitRef.current.zoom=Math.max(4,Math.min(12,orbitRef.current.zoom+e.deltaY*0.005));
-    };
-
-    // Touch
-    let lastTouchDist=0;
-    const onTouchStart=(e:TouchEvent)=>{
-      e.preventDefault();
-      if(e.touches.length===1){
-        const t=e.touches[0];
-        pointerRef.current={down:true,startX:t.clientX,startY:t.clientY,lastX:t.clientX,lastY:t.clientY,moved:false,touchDist:0};
-      }else if(e.touches.length===2){
-        lastTouchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      if(e instanceof TouchEvent)e.preventDefault();
+      const t=e instanceof MouseEvent?e:e.touches[0];
+      const dx=t.clientX-pointerRef.current.lx,dy=t.clientY-pointerRef.current.ly;
+      const tdx=t.clientX-pointerRef.current.sx,tdy=t.clientY-pointerRef.current.sy;
+      if(Math.sqrt(tdx*tdx+tdy*tdy)>THRESH)pointerRef.current.moved=true;
+      if(pointerRef.current.moved){
+        orbitRef.current.theta-=dx*0.007;
+        orbitRef.current.phi=Math.max(0.1,Math.min(Math.PI-0.1,orbitRef.current.phi+dy*0.007));
       }
+      pointerRef.current.lx=t.clientX;pointerRef.current.ly=t.clientY;
     };
-    const onTouchMove=(e:TouchEvent)=>{
-      e.preventDefault();
-      if(e.touches.length===1){
-        const t=e.touches[0];
-        const dx=t.clientX-pointerRef.current.lastX;
-        const dy=t.clientY-pointerRef.current.lastY;
-        const tdx=t.clientX-pointerRef.current.startX;
-        const tdy=t.clientY-pointerRef.current.startY;
-        if(Math.sqrt(tdx*tdx+tdy*tdy)>DRAG_THRESHOLD)pointerRef.current.moved=true;
-        if(pointerRef.current.moved){
-          orbitRef.current.theta-=dx*0.007;
-          orbitRef.current.phi=Math.max(0.12,Math.min(Math.PI-0.12,orbitRef.current.phi+dy*0.007));
-        }
-        pointerRef.current.lastX=t.clientX;pointerRef.current.lastY=t.clientY;
-      }else if(e.touches.length===2){
-        const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-        orbitRef.current.zoom=Math.max(4,Math.min(12,orbitRef.current.zoom-(dist-lastTouchDist)*0.02));
-        lastTouchDist=dist;
-      }
-    };
-    const onTouchEnd=(e:TouchEvent)=>{
+    const onUp=(e:MouseEvent|TouchEvent)=>{
       if(!pointerRef.current.down)return;
-      const wasMove=pointerRef.current.moved;
+      const wasMoved=pointerRef.current.moved;
       pointerRef.current.down=false;
-      if(!wasMove&&phase==="paint"&&!animating&&e.changedTouches.length>0){
-        const t=e.changedTouches[0];
+      if(!wasMoved&&phase==="paint"&&!animating){
+        const t=e instanceof MouseEvent?e:(e as TouchEvent).changedTouches[0];
         const r=canvas.getBoundingClientRect();
         const hit=findSticker(t.clientX-r.left,t.clientY-r.top,canvas.clientWidth,canvas.clientHeight);
         if(hit&&hit.idx!==4){
-          const prev={...stateRef.current};
-          setUndoStack(s=>[...s.slice(-19),JSON.parse(JSON.stringify(prev))]);
-          const arr=stateRef.current[hit.face].split("");
-          arr[hit.idx]=selectedColor;
-          const next={...stateRef.current,[hit.face]:arr.join("")};
-          syncCubeState(next);
+          setUndoStack(s=>[...s.slice(-19),JSON.parse(JSON.stringify(stateRef.current))]);
+          const arr=stateRef.current[hit.face].split("");arr[hit.idx]=selColor;
+          syncState({...stateRef.current,[hit.face]:arr.join("")});
         }
       }
     };
+    const onWheel=(e:WheelEvent)=>{e.preventDefault();orbitRef.current.zoom=Math.max(4,Math.min(12,orbitRef.current.zoom+e.deltaY*0.004));};
 
-    canvas.addEventListener("mousedown",onMouseDown);
-    window.addEventListener("mousemove",onMouseMove);
-    window.addEventListener("mouseup",onMouseUp);
+    canvas.addEventListener("mousedown",onDown);
+    window.addEventListener("mousemove",onMove);
+    window.addEventListener("mouseup",onUp);
     canvas.addEventListener("wheel",onWheel,{passive:false});
-    canvas.addEventListener("touchstart",onTouchStart,{passive:false});
-    canvas.addEventListener("touchmove",onTouchMove,{passive:false});
-    canvas.addEventListener("touchend",onTouchEnd,{passive:false});
+    canvas.addEventListener("touchstart",onDown,{passive:false});
+    canvas.addEventListener("touchmove",onMove,{passive:false});
+    canvas.addEventListener("touchend",onUp,{passive:false});
     return()=>{
-      canvas.removeEventListener("mousedown",onMouseDown);
-      window.removeEventListener("mousemove",onMouseMove);
-      window.removeEventListener("mouseup",onMouseUp);
+      canvas.removeEventListener("mousedown",onDown);
+      window.removeEventListener("mousemove",onMove);
+      window.removeEventListener("mouseup",onUp);
       canvas.removeEventListener("wheel",onWheel);
-      canvas.removeEventListener("touchstart",onTouchStart);
-      canvas.removeEventListener("touchmove",onTouchMove);
-      canvas.removeEventListener("touchend",onTouchEnd);
+      canvas.removeEventListener("touchstart",onDown);
+      canvas.removeEventListener("touchmove",onMove);
+      canvas.removeEventListener("touchend",onUp);
     };
-  },[phase,selectedColor,animating,findSticker,syncCubeState]);
+  },[phase,selColor,animating,syncState]);
 
-  // ── SOLVE ──────────────────────────────────────────────────
-  const handleSolve=useCallback(()=>{
-    const{valid}=validateCube(stateRef.current);
-    if(!valid)return;
+  // ── SOLVE ───────────────────────────────
+  const handleSolve=()=>{
     const steps=generateSolution(stateRef.current);
-    setSolution(steps);
-    setCurrentStep(0);
+    setSolution(steps);setStep(0);stepRef.current=0;
     setPhase(steps.length===0?"done":"solving");
-    setAiText("");
-    setAnimating(false);
-    solveQueueRef.current=[];
-    animRef.current=null;
-  },[]);
+    setAiText("");setAnimating(false);queueRef.current=[];animRef.current=null;
+  };
 
-  // Play/Pause
-  const handlePlay=useCallback(()=>{
-    if(phase==="done")return;
-    if(animRef.current)return; // already animating
-    const remaining=solution.slice(currentStep);
-    if(!remaining.length){setPhase("done");return;}
-    isPlayingRef.current=true;
-    setIsPlaying(true);
-    solveQueueRef.current=[...remaining.slice(1)];
-    const first=remaining[0];
-    const info=MOVE_AXIS[first];
-    if(info)highlightFaceRef.current=first.replace("'","");
-    animRef.current={move:first,t:0,speed:0.022*speedRef.current};
-    setAnimating(true);
-  },[phase,solution,currentStep]);
+  const startAnim=(mv:string)=>{
+    const info=MOVE_INFO[mv];if(info)hlFaceRef.current=mv.replace("'","");
+    animRef.current={move:mv,t:0,spd:0.025*speedRef.current};setAnimating(true);
+  };
 
-  const handlePause=useCallback(()=>{
-    isPlayingRef.current=false;
-    setIsPlaying(false);
-    solveQueueRef.current=[];
-  },[]);
-
-  const handleNext=useCallback(()=>{
-    if(animRef.current||currentStep>=solution.length)return;
-    const mv=solution[currentStep];
-    setCurrentStep(s=>s+1);
-    solveQueueRef.current=[];
-    const info=MOVE_AXIS[mv];
-    if(info)highlightFaceRef.current=mv.replace("'","");
-    animRef.current={move:mv,t:0,speed:0.035*speedRef.current};
-    setAnimating(true);
-  },[solution,currentStep]);
-
-  const handlePrev=useCallback(()=>{
-    if(animRef.current||currentStep<=0)return;
-    // Go back by re-solving from initial to currentStep-1
-    // For simplicity: just decrement and reverse the move
-    const mv=solution[currentStep-1];
-    const inverse=(m:string)=>m.endsWith("'")?m.slice(0,-1):m+"'";
-    const rev=inverse(mv);
-    setCurrentStep(s=>s-1);
-    solveQueueRef.current=[];
-    const info=MOVE_AXIS[rev];
-    if(info)highlightFaceRef.current=rev.replace("'","");
-    animRef.current={move:rev,t:0,speed:0.035*speedRef.current};
-    setAnimating(true);
-  },[solution,currentStep]);
-
-  const handleReset=useCallback(()=>{
-    const fresh=makeEmptyState();
-    syncCubeState(fresh);
-    setSolution([]);setCurrentStep(0);setPhase("paint");
-    setAiText("");setUndoStack([]);setIsPlaying(false);
-    isPlayingRef.current=false;
-    animRef.current=null;solveQueueRef.current=[];
-    highlightFaceRef.current="";setAnimating(false);
-  },[syncCubeState]);
-
-  const handleUndo=useCallback(()=>{
-    setUndoStack(stack=>{
-      if(!stack.length)return stack;
-      const prev=stack[stack.length-1];
-      syncCubeState(prev);
-      return stack.slice(0,-1);
-    });
-  },[syncCubeState]);
-
-  const handleFillSolved=useCallback(()=>{
-    syncCubeState(JSON.parse(JSON.stringify(SOLVED_STATE)));
-    setUndoStack([]);
-  },[syncCubeState]);
+  const handlePlay=()=>{
+    if(phase==="done"||animRef.current)return;
+    const remaining=solution.slice(stepRef.current);if(!remaining.length){setPhase("done");return;}
+    isPlayingRef.current=true;setPlaying(true);
+    queueRef.current=[...remaining.slice(1)];
+    startAnim(remaining[0]);
+  };
+  const handlePause=()=>{isPlayingRef.current=false;setPlaying(false);queueRef.current=[];};
+  const handleNext=()=>{
+    if(animRef.current||stepRef.current>=solution.length)return;
+    queueRef.current=[];startAnim(solution[stepRef.current]);
+    setStep(s=>{const n=s+1;stepRef.current=n;return n;});
+  };
+  const handlePrev=()=>{
+    if(animRef.current||stepRef.current<=0)return;
+    const mv=solution[stepRef.current-1];
+    const inv=(m:string)=>m.endsWith("'")?m.slice(0,-1):m+"'";
+    setStep(s=>{const n=s-1;stepRef.current=n;return n;});
+    queueRef.current=[];startAnim(inv(mv));
+  };
+  const handleReset=()=>{
+    syncState(makeEmpty());setSolution([]);setStep(0);stepRef.current=0;
+    setPhase("paint");setAiText("");setUndoStack([]);setPlaying(false);
+    isPlayingRef.current=false;animRef.current=null;queueRef.current=[];
+    hlFaceRef.current="";setAnimating(false);
+  };
+  const handleUndo=()=>{
+    setUndoStack(s=>{if(!s.length)return s;const prev=s[s.length-1];syncState(prev);return s.slice(0,-1);});
+  };
 
   const askAI=async()=>{
     setAiLoading(true);setAiText("");
-    const mv=solution[currentStep-1]||solution[0];
-    const info=MOVE_AXIS[mv];
+    const mv=solution[step-1]||solution[0];
     try{
-      const res=await fetch("/api/rubik-ai",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({move:mv,stepNum:currentStep,total:solution.length,lang})});
+      const res=await fetch("/api/rubik-ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({move:mv,stepNum:step,total:solution.length,lang})});
       const data=await res.json();setAiText(data.explanation||"");
     }catch{setAiText("Error connecting to AI.");}
     setAiLoading(false);
   };
 
-  // Sync speed ref
-  useEffect(()=>{speedRef.current=speed;},[speed]);
-
-  // Color count display
-  const colorCounts:{[k:string]:number}=Object.fromEntries(COLOR_KEYS.map(k=>[k,0]));
-  for(const face of Object.keys(cubeState))for(const c of cubeState[face].split(""))if(c in colorCounts)colorCounts[c]++;
-  const totalPainted=Object.values(colorCounts).reduce((a,b)=>a+b,0);
-  const totalStickers=54-9; // 54 total - 9 centers (already set)
-  const unsetCount=Object.values(cubeState).join("").split("").filter(c=>c==="X").length;
-
-  const currentMove=solution[currentStep];
-  const moveInfo=MOVE_AXIS[currentMove];
-
-  const T={
-    title:{es:"RubikSolver",en:"RubikSolver"},
-    subtitle:{es:"Drag to rotate · Tap stickers to paint",en:"Drag to rotate · Tap stickers to paint"},
-    selectColor:{es:"Selecciona un color, luego toca los stickers para copiar tu cubo",en:"Select a color, then tap stickers to match your cube"},
-    solve:{es:"Resolver",en:"Solve"},
-    reset:{es:"Reiniciar",en:"Reset"},
-    undo:{es:"Deshacer",en:"Undo"},
-    fill:{es:"Cubo resuelto",en:"Fill solved"},
-    validating:{es:"Completá todos los stickers",en:"Paint all stickers to solve"},
-    readyToSolve:{es:"¡Listo para resolver!",en:"Ready to solve!"},
-    stepOf:{es:"Paso",en:"Step"},
-    of:{es:"de",en:"of"},
-    done:{es:"¡Cubo resuelto! 🎉",en:"Cube solved! 🎉"},
-    prev:{es:"Anterior",en:"Previous"},
-    next:{es:"Siguiente",en:"Next"},
-    play:{es:"Play",en:"Play"},
-    pause:{es:"Pausa",en:"Pause"},
-    speed:{es:"Velocidad",en:"Speed"},
-    aiExplain:{es:"Explicar con IA",en:"Explain with AI"},
-    turn:{es:"Gira",en:"Turn"},
-  };
-  const tx=(k:keyof typeof T)=>T[k][lang];
+  const counts:Record<string,number>={W:0,Y:0,R:0,O:0,B:0,G:0};
+  for(const face of Object.keys(cubeState))for(const c of cubeState[face].split(""))if(c in counts)counts[c]++;
+  const curMove=solution[step];
+  const curInfo=MOVE_INFO[curMove];
+  const curLangObj=LANGS.find(l=>l.code===lang)??LANGS[0];
 
   return(
-    <div style={{height:"100dvh",display:"flex",flexDirection:"column",background:"#0a0e1a",
-      fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif",color:"#fff",overflow:"hidden"}}>
+    <div style={{height:"100dvh",display:"flex",flexDirection:"column",
+      fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',sans-serif",
+      color:"#1a1a2e",overflow:"hidden",background:"#90C0F5"}}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0;}
-        :root{--red:#C41230;--accent:#E8341A;}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
-        .btn{border:none;cursor:pointer;font-family:inherit;font-weight:600;transition:all 0.15s;border-radius:10px;}
-        .btn:active{transform:scale(0.96);}
-        .btn-primary{background:linear-gradient(135deg,#C41230,#E8341A);color:#fff;box-shadow:0 4px 16px rgba(196,18,48,0.4);}
-        .btn-primary:hover{box-shadow:0 6px 20px rgba(196,18,48,0.5);transform:translateY(-1px);}
-        .btn-primary:disabled{opacity:0.4;transform:none;box-shadow:none;}
-        .btn-ghost{background:rgba(255,255,255,0.07);color:#ccc;border:1px solid rgba(255,255,255,0.12);}
-        .btn-ghost:hover{background:rgba(255,255,255,0.12);color:#fff;}
-        .btn-ghost:disabled{opacity:0.35;cursor:not-allowed;}
-        .move-chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:6px;font-family:monospace;font-size:12px;font-weight:700;transition:all 0.2s;}
-        .color-btn{border:none;cursor:pointer;border-radius:10px;transition:all 0.18s;position:relative;}
-        .color-btn:hover{transform:scale(1.08);}
-        .color-btn.active{transform:scale(1.15);box-shadow:0 0 0 3px #fff, 0 0 0 5px var(--accent);}
+        @keyframes pop{0%{transform:scale(0.8);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        .btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;transition:all 0.18s;border-radius:14px;letter-spacing:-0.2px;}
+        .btn:active{transform:scale(0.94)!important;}
+        .btn-solve{background:linear-gradient(135deg,#FF6B00,#FF9500);color:#fff;font-size:16px;padding:13px 32px;box-shadow:0 6px 20px rgba(255,107,0,0.45);border-radius:16px;}
+        .btn-solve:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,107,0,0.55);}
+        .btn-solve:disabled{opacity:0.45;transform:none;box-shadow:none;cursor:not-allowed;}
+        .btn-sm{background:rgba(255,255,255,0.3);color:#1a1a2e;font-size:13px;padding:9px 16px;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px);}
+        .btn-sm:hover{background:rgba(255,255,255,0.5);}
+        .btn-sm:disabled{opacity:0.4;cursor:not-allowed;}
+        .btn-nav{background:rgba(255,255,255,0.9);color:#1a1a2e;border-radius:50px;width:52px;height:52px;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+        .btn-nav:hover{background:#fff;transform:scale(1.06);}
+        .btn-nav:disabled{opacity:0.3;cursor:not-allowed;}
+        .btn-play{background:linear-gradient(135deg,#4CAF50,#2E7D32);color:#fff;border-radius:50px;width:64px;height:64px;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(46,125,50,0.5);}
+        .btn-play:hover{transform:scale(1.06);}
+        .color-dot{border:none;cursor:pointer;border-radius:12px;transition:all 0.18s;position:relative;}
+        .color-dot.sel{transform:scale(1.22);box-shadow:0 0 0 3px #fff,0 0 0 5px #FF6B00,0 4px 16px rgba(0,0,0,0.3);}
+        .color-dot:hover:not(.sel){transform:scale(1.1);}
+        .chip{display:inline-flex;align-items:center;padding:4px 10px;border-radius:8px;font-family:monospace;font-size:13px;font-weight:800;transition:all 0.2s;}
       `}</style>
 
       {/* ── HEADER ── */}
-      <header style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-        padding:"10px 20px",borderBottom:"1px solid rgba(255,255,255,0.06)",
-        background:"rgba(10,14,26,0.9)",backdropFilter:"blur(20px)",flexShrink:0,zIndex:20}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"10px 16px 8px",background:"rgba(144,192,245,0.7)",backdropFilter:"blur(20px)",
+        borderBottom:"1px solid rgba(255,255,255,0.3)",flexShrink:0,zIndex:30}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:30,height:30,borderRadius:7,background:"linear-gradient(135deg,#C41230,#FF6B1A)",
-            display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🧩</div>
+          <div style={{width:34,height:34,borderRadius:9,background:"linear-gradient(135deg,#FF6B00,#FF9500)",
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,
+            boxShadow:"0 3px 10px rgba(255,107,0,0.4)"}}>🧩</div>
           <div>
-            <div style={{fontWeight:800,fontSize:17,letterSpacing:"-0.3px"}}>
-              Rubik<span style={{color:"#E8341A"}}>Solver</span>
-            </div>
+            <span style={{fontWeight:800,fontSize:18,letterSpacing:"-0.5px",color:"#1a1a2e"}}>
+              Rubik<span style={{color:"#FF6B00"}}>Solver</span>
+            </span>
           </div>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <span style={{fontSize:11,color:"#555",letterSpacing:"0.3px",display:"none"}}>
-            {tx("subtitle")}
-          </span>
-          <div style={{display:"flex",gap:3,background:"rgba(255,255,255,0.06)",borderRadius:14,padding:3}}>
-            {(["es","en"] as const).map(l=>(
-              <button key={l} onClick={()=>setLang(l)} style={{padding:"3px 10px",borderRadius:11,border:"none",
-                cursor:"pointer",background:lang===l?"#C41230":"transparent",
-                color:lang===l?"#fff":"#666",fontWeight:700,fontSize:11,transition:"all 0.15s"}}>{l.toUpperCase()}</button>
-            ))}
-          </div>
-        </div>
-      </header>
 
-      {/* ── CANVAS ── */}
+        {/* Language picker */}
+        <div style={{position:"relative"}}>
+          <button onClick={()=>setShowLangMenu(m=>!m)} style={{
+            display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:12,
+            border:"1px solid rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.3)",
+            cursor:"pointer",backdropFilter:"blur(8px)",fontSize:14,fontWeight:600,color:"#1a1a2e"}}>
+            <span style={{fontSize:18}}>{curLangObj.flag}</span>
+            <span style={{fontSize:12}}>{curLangObj.code.toUpperCase()}</span>
+            <span style={{fontSize:10,opacity:0.6}}>▼</span>
+          </button>
+          {showLangMenu&&(
+            <div style={{position:"absolute",right:0,top:"calc(100% + 6px)",
+              background:"rgba(255,255,255,0.95)",backdropFilter:"blur(20px)",
+              borderRadius:14,border:"1px solid rgba(0,0,0,0.1)",
+              boxShadow:"0 12px 40px rgba(0,0,0,0.2)",overflow:"hidden",zIndex:100,minWidth:160}}
+              onMouseLeave={()=>setShowLangMenu(false)}>
+              {LANGS.map(l=>(
+                <button key={l.code} onClick={()=>{setLang(l.code);setShowLangMenu(false);}}
+                  style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 14px",
+                    border:"none",background:lang===l.code?"rgba(255,107,0,0.1)":"transparent",
+                    cursor:"pointer",fontSize:14,fontWeight:lang===l.code?700:500,
+                    color:lang===l.code?"#FF6B00":"#1a1a2e",textAlign:"left"}}>
+                  <span style={{fontSize:20}}>{l.flag}</span>
+                  <span>{l.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── CANVAS (sky blue bg, big cube) ── */}
       <canvas ref={canvasRef} style={{flex:1,display:"block",width:"100%",minHeight:0,
-        touchAction:"none",userSelect:"none"}}/>
+        touchAction:"none",userSelect:"none",cursor:"crosshair"}}/>
 
       {/* ── BOTTOM PANEL ── */}
-      <div style={{flexShrink:0,background:"rgba(8,11,20,0.98)",borderTop:"1px solid rgba(255,255,255,0.08)",
-        padding:"14px 16px 16px",maxHeight:"42vh",overflowY:"auto"}}>
+      <div style={{flexShrink:0,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(30px)",
+        borderTop:"1px solid rgba(0,0,0,0.08)",padding:"14px 16px 18px",
+        borderRadius:"20px 20px 0 0",boxShadow:"0 -4px 30px rgba(0,0,0,0.12)",
+        maxHeight:"48vh",overflowY:"auto"}}>
 
-        {/* PAINT PHASE */}
+        {/* PAINT */}
         {phase==="paint"&&(<div style={{animation:"fadeUp 0.3s ease"}}>
-          <p style={{fontSize:12,color:"#556",textAlign:"center",marginBottom:12,lineHeight:1.4}}>
-            {tx("selectColor")}
+          <p style={{fontSize:12,color:"#888",textAlign:"center",marginBottom:12,letterSpacing:"0.1px"}}>
+            {tx("tapToPaint",lang)}
           </p>
 
-          {/* Color palette */}
-          <div style={{display:"flex",gap:9,justifyContent:"center",marginBottom:14}}>
+          {/* Color palette — big, finger-friendly */}
+          <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:14}}>
             {COLOR_KEYS.map(k=>(
-              <button key={k} className={`color-btn${selectedColor===k?" active":""}`}
-                onClick={()=>setSelectedColor(k)}
-                title={COLOR_LABEL[k]}
-                style={{width:40,height:40,background:COLOR_HEX[k]}}>
-                {selectedColor===k&&<div style={{position:"absolute",bottom:2,right:2,width:8,height:8,
-                  borderRadius:"50%",background:"rgba(255,255,255,0.9)",border:"1px solid rgba(0,0,0,0.3)"}}/>}
-              </button>
+              <div key={k} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <button className={`color-dot${selColor===k?" sel":""}`}
+                  onClick={()=>setSelColor(k)}
+                  style={{width:44,height:44,background:STICKER_HEX[k],
+                    boxShadow:selColor!==k?"0 3px 8px rgba(0,0,0,0.2)":"none"}}>
+                </button>
+                <span style={{fontSize:11,fontWeight:700,
+                  color:counts[k]===9?"#2E7D32":counts[k]>9?"#CC0000":"#888"}}>
+                  {counts[k]}
+                </span>
+              </div>
             ))}
-          </div>
-
-          {/* Color counts */}
-          <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:14,flexWrap:"wrap"}}>
-            {COLOR_KEYS.map(k=>{
-              const n=colorCounts[k];const ok=n===9;const over=n>9;
-              return(<div key={k} style={{display:"flex",alignItems:"center",gap:4,
-                padding:"4px 8px",borderRadius:7,
-                background:ok?"rgba(0,155,72,0.15)":over?"rgba(196,18,48,0.2)":"rgba(255,255,255,0.05)",
-                border:`1px solid ${ok?"rgba(0,155,72,0.3)":over?"rgba(196,18,48,0.4)":"rgba(255,255,255,0.08)"}`}}>
-                <div style={{width:10,height:10,borderRadius:3,background:COLOR_HEX[k]}}/>
-                <span style={{fontSize:12,fontWeight:700,color:ok?"#1aae3e":over?"#ff4444":"#888"}}>{n}</span>
-              </div>);
-            })}
           </div>
 
           {/* Validation */}
           {validation.errors.length>0&&(
-            <div style={{background:"rgba(196,18,48,0.12)",border:"1px solid rgba(196,18,48,0.3)",
-              borderRadius:10,padding:"8px 12px",marginBottom:12}}>
+            <div style={{background:"#FFF3E0",border:"1px solid #FFB74D",borderRadius:12,
+              padding:"8px 12px",marginBottom:12}}>
               {validation.errors.slice(0,2).map((e,i)=>(
-                <p key={i} style={{fontSize:12,color:"#ff7070",margin:i>0?"4px 0 0":0}}>⚠ {e}</p>
+                <p key={i} style={{fontSize:12,color:"#E65100",margin:i?`4px 0 0`:0}}>⚠ {e}</p>
               ))}
             </div>
           )}
           {validation.valid&&(
-            <div style={{background:"rgba(0,155,72,0.12)",border:"1px solid rgba(0,155,72,0.3)",
-              borderRadius:10,padding:"8px 12px",marginBottom:12,textAlign:"center"}}>
-              <span style={{fontSize:13,color:"#1aae3e",fontWeight:600}}>✓ {tx("readyToSolve")}</span>
+            <div style={{background:"#E8F5E9",border:"1px solid #81C784",borderRadius:12,
+              padding:"8px 12px",marginBottom:12,textAlign:"center"}}>
+              <span style={{fontSize:13,color:"#2E7D32",fontWeight:700}}>✓ {tx("ready",lang)}</span>
             </div>
           )}
 
-          {/* Actions */}
+          {/* Buttons */}
           <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
-            <button className="btn btn-primary" onClick={handleSolve}
-              disabled={!validation.valid}
-              style={{padding:"11px 28px",fontSize:15}}>
-              {tx("solve")} →
+            <button className="btn btn-solve" onClick={handleSolve} disabled={!validation.valid}>
+              {tx("solve",lang)} →
             </button>
-            <button className="btn btn-ghost" onClick={handleUndo}
-              disabled={undoStack.length===0}
-              style={{padding:"11px 16px",fontSize:14}}>↩ {tx("undo")}</button>
-            <button className="btn btn-ghost" onClick={handleFillSolved}
-              style={{padding:"11px 16px",fontSize:14}}>🎯 {tx("fill")}</button>
-            <button className="btn btn-ghost" onClick={handleReset}
-              style={{padding:"11px 16px",fontSize:14}}>✕ {tx("reset")}</button>
+            <button className="btn btn-sm" onClick={handleUndo} disabled={!undoStack.length}
+              style={{borderRadius:14}}>↩ {tx("undo",lang)}</button>
+            <button className="btn btn-sm" onClick={()=>syncState(JSON.parse(JSON.stringify(SOLVED_STATE)))}
+              style={{borderRadius:14}}>🎯 {tx("fillSolved",lang)}</button>
+            <button className="btn btn-sm" onClick={handleReset} style={{borderRadius:14}}>
+              ✕ {tx("reset",lang)}
+            </button>
           </div>
         </div>)}
 
-        {/* SOLVING PHASE */}
+        {/* SOLVING / DONE */}
         {(phase==="solving"||phase==="done")&&(<div style={{animation:"fadeUp 0.3s ease"}}>
-          {/* Current move display */}
-          {phase==="solving"&&currentMove&&(<div style={{display:"flex",alignItems:"center",gap:14,
-            background:"rgba(255,255,255,0.04)",borderRadius:12,padding:"10px 14px",marginBottom:12}}>
-            <div style={{
-              width:56,height:56,borderRadius:12,flexShrink:0,
-              background:`rgba(${hexToRgb(COLOR_HEX[moveInfo?moveInfo.axis[0]!==0?"R":moveInfo.axis[1]!==0?"Y":"R":"W"]).map(v=>Math.round(v*255)).join(",")},0.15)`,
-              border:"2px solid rgba(255,255,255,0.15)",
-              display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:22,fontWeight:900,fontFamily:"monospace",color:"#fff",
-              letterSpacing:"-1px"
-            }}>{currentMove}</div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:11,color:"#556",marginBottom:2}}>{tx("stepOf")} {currentStep+1} {tx("of")} {solution.length}</div>
-              <div style={{fontSize:14,fontWeight:600,color:"#ddd"}}>{moveInfo?.label||""}</div>
-              <div style={{height:3,background:"rgba(255,255,255,0.08)",borderRadius:2,marginTop:6}}>
-                <div style={{height:"100%",borderRadius:2,background:"linear-gradient(90deg,#C41230,#FF6B1A)",
-                  width:`${((currentStep)/solution.length)*100}%`,transition:"width 0.35s ease"}}/>
-              </div>
-            </div>
-          </div>)}
 
-          {phase==="done"&&(
-            <div style={{textAlign:"center",padding:"12px 0",marginBottom:12}}>
-              <div style={{fontSize:28,marginBottom:4}}>🎉</div>
-              <div style={{fontSize:16,fontWeight:700,color:"#1aae3e"}}>{tx("done")}</div>
+          {/* Current move card */}
+          {phase==="solving"&&curMove&&(
+            <div style={{display:"flex",alignItems:"center",gap:14,
+              background:"linear-gradient(135deg,rgba(255,107,0,0.08),rgba(255,149,0,0.08))",
+              border:"1px solid rgba(255,107,0,0.2)",borderRadius:16,padding:"12px 14px",marginBottom:12}}>
+              <div style={{width:58,height:58,borderRadius:14,
+                background:"linear-gradient(135deg,#FF6B00,#FF9500)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:24,fontWeight:900,fontFamily:"monospace",color:"#fff",
+                flexShrink:0,boxShadow:"0 4px 16px rgba(255,107,0,0.4)",
+                animation:"pop 0.3s ease"}}>
+                {curMove}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:11,color:"#999",marginBottom:2,fontWeight:600}}>
+                  {tx("stepOf",lang)} {step+1} {tx("of",lang)} {solution.length}
+                </div>
+                <div style={{fontSize:14,fontWeight:700,color:"#1a1a2e",marginBottom:6}}>
+                  {lang==="es"?curInfo?.labelEs:curInfo?.label}
+                </div>
+                <div style={{height:4,background:"rgba(0,0,0,0.08)",borderRadius:2}}>
+                  <div style={{height:"100%",borderRadius:2,transition:"width 0.35s ease",
+                    background:"linear-gradient(90deg,#FF6B00,#FF9500)",
+                    width:`${(step/solution.length)*100}%`}}/>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Move sequence */}
+          {phase==="done"&&(
+            <div style={{textAlign:"center",padding:"8px 0 12px",animation:"pop 0.4s ease"}}>
+              <div style={{fontSize:36,marginBottom:4}}>🎉</div>
+              <div style={{fontSize:17,fontWeight:800,color:"#2E7D32"}}>{tx("solved",lang)}</div>
+            </div>
+          )}
+
+          {/* Move chips */}
           <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:12}}>
             {solution.map((m,i)=>(
-              <span key={i} className="move-chip" style={{
-                background:i<currentStep?"rgba(26,174,62,0.18)":i===currentStep?"rgba(196,18,48,0.3)":"rgba(255,255,255,0.05)",
-                color:i<currentStep?"#1aae3e":i===currentStep?"#ff9090":"#555",
-                border:`1px solid ${i===currentStep?"rgba(196,18,48,0.5)":i<currentStep?"rgba(26,174,62,0.3)":"transparent"}`,
-                textDecoration:i<currentStep?"line-through":"none"
-              }}>{m}</span>
+              <span key={i} className="chip" style={{
+                background:i<step?"rgba(46,125,50,0.15)":i===step?"rgba(255,107,0,0.2)":"rgba(0,0,0,0.06)",
+                color:i<step?"#2E7D32":i===step?"#FF6B00":"#aaa",
+                border:`1px solid ${i===step?"rgba(255,107,0,0.4)":i<step?"rgba(46,125,50,0.3)":"transparent"}`,
+                textDecoration:i<step?"line-through":"none"}}>
+                {m}
+              </span>
             ))}
           </div>
 
-          {/* Controls */}
-          <div style={{display:"flex",gap:7,justifyContent:"center",alignItems:"center",flexWrap:"wrap",marginBottom:10}}>
-            <button className="btn btn-ghost" onClick={handlePrev}
-              disabled={currentStep===0||animating}
-              style={{padding:"9px 14px",fontSize:13}}>← {tx("prev")}</button>
-            {isPlaying
-              ?<button className="btn btn-ghost" onClick={handlePause} style={{padding:"9px 18px",fontSize:13}}>⏸ {tx("pause")}</button>
-              :<button className="btn btn-primary" onClick={handlePlay}
-                disabled={phase==="done"||animating}
-                style={{padding:"9px 18px",fontSize:13}}>▶ {tx("play")}</button>}
-            <button className="btn btn-ghost" onClick={handleNext}
-              disabled={currentStep>=solution.length||animating}
-              style={{padding:"9px 14px",fontSize:13}}>{tx("next")} →</button>
+          {/* Player controls */}
+          <div style={{display:"flex",gap:10,justifyContent:"center",alignItems:"center",marginBottom:12}}>
+            <button className="btn btn-nav" onClick={handlePrev} disabled={step===0||animating}>←</button>
+            {playing
+              ?<button className="btn btn-play" onClick={handlePause}>⏸</button>
+              :<button className="btn btn-play" onClick={handlePlay} disabled={phase==="done"||animating}>▶</button>}
+            <button className="btn btn-nav" onClick={handleNext} disabled={step>=solution.length||animating}>→</button>
 
-            {/* Speed */}
-            <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:4}}>
-              <span style={{fontSize:11,color:"#556"}}>{tx("speed")}:</span>
+            <div style={{display:"flex",gap:4,marginLeft:8}}>
               {[0.5,1,2].map(s=>(
                 <button key={s} onClick={()=>setSpeed(s)} style={{
-                  padding:"4px 8px",borderRadius:6,border:"1px solid",
-                  fontSize:11,fontWeight:700,cursor:"pointer",
-                  background:speed===s?"rgba(196,18,48,0.25)":"transparent",
-                  borderColor:speed===s?"rgba(196,18,48,0.6)":"rgba(255,255,255,0.1)",
-                  color:speed===s?"#ff9090":"#666"}}>{s}×</button>
+                  width:36,height:36,borderRadius:10,border:"1px solid",cursor:"pointer",
+                  fontSize:11,fontWeight:800,transition:"all 0.15s",
+                  background:speed===s?"#FF6B00":"rgba(0,0,0,0.06)",
+                  borderColor:speed===s?"#FF6B00":"rgba(0,0,0,0.1)",
+                  color:speed===s?"#fff":"#888"}}>{s}×</button>
               ))}
             </div>
-
-            <button className="btn btn-ghost" onClick={handleReset}
-              style={{padding:"9px 14px",fontSize:13}}>✕ {tx("reset")}</button>
           </div>
 
-          {/* AI */}
-          {currentStep>0&&(
-            <div style={{background:"rgba(255,255,255,0.03)",borderRadius:10,padding:"10px 12px",
-              border:"1px solid rgba(255,255,255,0.07)"}}>
-              <div style={{fontSize:11,color:"#C41230",fontWeight:700,marginBottom:6,letterSpacing:"0.5px"}}>
-                ✦ AI EXPLANATION
-              </div>
-              {aiLoading
-                ?<div style={{color:"#556",fontSize:13,fontStyle:"italic",animation:"pulse 1.5s infinite"}}>Thinking…</div>
-                :aiText
-                  ?<p style={{color:"#bbb",fontSize:13,lineHeight:1.55,margin:0}}>{aiText}</p>
-                  :<button className="btn btn-ghost" onClick={askAI}
-                    style={{padding:"6px 14px",fontSize:12}}>
-                    🤖 {tx("aiExplain")}
-                  </button>}
+          {/* Back + AI */}
+          <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+            <button className="btn btn-sm" onClick={handleReset} style={{borderRadius:14}}>
+              {tx("back",lang)}
+            </button>
+            {step>0&&(
+              <button className="btn btn-sm" onClick={askAI} disabled={aiLoading} style={{borderRadius:14}}>
+                {aiLoading?"⏳...":"🤖 "+tx("aiExplain",lang)}
+              </button>
+            )}
+          </div>
+
+          {/* AI text */}
+          {aiText&&(
+            <div style={{marginTop:10,background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.15)",
+              borderRadius:12,padding:"10px 12px",animation:"fadeUp 0.3s ease"}}>
+              <p style={{fontSize:13,color:"#555",lineHeight:1.55,margin:0}}>{aiText}</p>
             </div>
           )}
         </div>)}
