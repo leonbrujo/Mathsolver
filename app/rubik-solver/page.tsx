@@ -481,10 +481,11 @@ export default function RubikSolverPage(){
   },[getVP]);
 
   // ── FIND STICKER UNDER CURSOR ──────────────────────────────
-  const findSticker = useCallback((cx:number,cy:number,w:number,h:number):{gx:number,gy:number,gz:number,fk:string,face:string,idx:number}|null=>{
+  const findSticker = useCallback((cx:number,cy:number,w:number,h:number):{gx:number,gy:number,gz:number,fk:string,face:string,idx:number,dist:number,depth:number}|null=>{
     const{camX,camY,camZ}=getVP();
     const GAP=1.06;
-    let best:{dist:number,gx:number,gy:number,gz:number,fk:string,face:string,idx:number,depth:number}|null=null;
+    type BestHit={dist:number,gx:number,gy:number,gz:number,fk:string,face:string,idx:number,depth:number};
+    let best:BestHit|null=null;
 
     const tryFace=(gx:number,gy:number,gz:number,fk:string,wx:number,wy:number,wz:number,nx:number,ny:number,nz:number)=>{
       // backface cull
