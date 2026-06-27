@@ -333,7 +333,7 @@ export default function RubikSolverPage() {
   const animRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const capRef = useRef<HTMLCanvasElement>(null);
+  // capRef removed — canvas created dynamically
   const pendingStreamRef = useRef<MediaStream|null>(null);
 
   useEffect(() => {
@@ -506,12 +506,17 @@ export default function RubikSolverPage() {
     setCamStream(null); setShowScan(false); setScanning(false);
   };
   const captureAndScan = async () => {
-    if (!videoRef.current || !capRef.current) return;
+    const video = videoRef.current;
+    if (!video) { alert("Camera not ready. Please try again."); return; }
     setScanning(true);
-    const v = videoRef.current, c = capRef.current;
-    c.width = v.videoWidth||640; c.height = v.videoHeight||480;
-    c.getContext("2d")!.drawImage(v,0,0);
-    const b64 = c.toDataURL("image/jpeg",0.85).split(",")[1];
+    // Create canvas dynamically — avoids ref timing issues
+    const c = document.createElement("canvas");
+    c.width = video.videoWidth || 640;
+    c.height = video.videoHeight || 480;
+    const ctx = c.getContext("2d");
+    if (!ctx) { setScanning(false); return; }
+    ctx.drawImage(video, 0, 0);
+    const b64 = c.toDataURL("image/jpeg", 0.85).split(",")[1];
     try {
       const res = await fetch("/api/rubik-scan",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({imageBase64:b64,face:scanFace})});
@@ -678,7 +683,7 @@ export default function RubikSolverPage() {
                 : `📷 Scan ${FACE_LABEL[scanFace]?.en}`}
             </button>
           </div>
-          <canvas ref={capRef} style={{display:"none"}}/>
+          {/* canvas created dynamically in captureAndScan */}
         </div>
       )}
 
