@@ -492,7 +492,6 @@ export default function RubikSolverPage() {
   };
 
   // ── CAMERA SCAN ───────────────────────────────────────
-  const pendingStreamRef = useRef<MediaStream|null>(null);
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
