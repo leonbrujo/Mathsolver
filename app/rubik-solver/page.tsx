@@ -10,9 +10,14 @@ const SOLVED: Record<string,string> = {
 };
 const CENTERS: Record<string,string> = {U:"W",D:"Y",F:"R",B:"O",L:"B",R:"G"};
 
+// Only U(W) and D(Y) centers are locked — others are user-editable
+const LOCKED_CENTERS: Record<string,string> = {U:"W", D:"Y"};
+
 function makeEmpty(): Record<string,string> {
   return Object.fromEntries(Object.keys(SOLVED).map(f => {
-    const a = Array(9).fill("X"); a[4] = CENTERS[f]; return [f, a.join("")];
+    const a = Array(9).fill("X");
+    if (LOCKED_CENTERS[f]) a[4] = LOCKED_CENTERS[f];
+    return [f, a.join("")];
   }));
 }
 
@@ -219,11 +224,18 @@ function CSSCube({state, rotX, rotY, animMove, animProgress, selectedFace, onSti
                         background: "rgba(255,255,255,0.2)",
                         borderRadius: "0 0 100% 0",
                       }}/>
-                      {isCenter && (
+                      {isLocked && (
                         <div style={{
                           position: "absolute", inset: 0,
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.4)",
+                          fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.35)",
+                        }}>🔒</div>
+                      )}
+                      {isCenter && !isLocked && (
+                        <div style={{
+                          position: "absolute", inset: 0,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.3)",
                         }}>●</div>
                       )}
                     </div>
@@ -321,6 +333,14 @@ export default function RubikSolverPage() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const capRef = useRef<HTMLCanvasElement>(null);
+  const pendingStreamRef = useRef<MediaStream|null>(null);
+
+  useEffect(() => {
+    if (showScan && videoRef.current && pendingStreamRef.current) {
+      videoRef.current.srcObject = pendingStreamRef.current;
+      videoRef.current.play().catch(()=>{});
+    }
+  }, [showScan]);
 
   const syncState = useCallback((st: Record<string,string>) => {
     setCubeState({...st});
@@ -373,6 +393,8 @@ export default function RubikSolverPage() {
   // ── STICKER CLICK ─────────────────────────────────────
   const handleStickerClick = useCallback((face: string, idx: number) => {
     if (phase !== "paint" || animRef.current) return;
+    // Block only U/D centers (White/Yellow are orientation references)
+    if (idx === 4 && (face === "U" || face === "D")) return;
     setUndoStack(s => [...s.slice(-19), JSON.parse(JSON.stringify(stateRef.current))]);
     const arr = stateRef.current[face].split("");
     arr[idx] = selColor;
@@ -469,12 +491,15 @@ export default function RubikSolverPage() {
   };
 
   // ── CAMERA SCAN ───────────────────────────────────────
+  const pendingStreamRef = useRef<MediaStream|null>(null);
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
-      setCamStream(stream); setShowScan(true);
-      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
-    } catch { alert("Camera access denied."); }
+      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
+      pendingStreamRef.current = stream;
+      setCamStream(stream);
+      setShowScan(true);
+      // stream assigned to video via useEffect after render
+    } catch(e) { alert("Camera access denied. Please allow camera permissions."); }
   };
   const stopCamera = () => {
     camStream?.getTracks().forEach(t=>t.stop());
