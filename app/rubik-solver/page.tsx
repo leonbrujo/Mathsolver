@@ -1152,112 +1152,108 @@ export default function RubikSolverPage() {
         {/* SOLVING / DONE */}
         {(phase==="solving"||phase==="done") && (
           <div style={{animation:"fadeUp 0.3s ease"}}>
-            {/* Current move card */}
-            {phase==="solving"&&curMove && (
-              <div style={{display:"flex",alignItems:"center",gap:14,
-                background:"linear-gradient(135deg,rgba(255,107,0,0.07),rgba(255,170,0,0.05))",
-                border:"1.5px solid rgba(255,107,0,0.2)",borderRadius:18,padding:"13px 16px",marginBottom:12}}>
-                <div style={{width:62,height:62,borderRadius:16,flexShrink:0,
-                  background:"linear-gradient(135deg,#FF6B00,#FFAA00)",
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:26,fontWeight:900,fontFamily:"monospace",color:"#fff",
-                  boxShadow:"0 6px 20px rgba(255,107,0,0.5)",animation:"pop 0.3s ease",
-                  letterSpacing:"-1px"}}>
-                  {curMove}
+            {phase==="done" ? (
+              <div style={{textAlign:"center",padding:"16px 0",animation:"pop 0.5s ease"}}>
+                <div style={{fontSize:52}}>🎉</div>
+                <div style={{fontSize:20,fontWeight:800,color:"#2E7D32",marginTop:6}}>{tx("solved",lang)}</div>
+                <button className="btn" onClick={handleReset} style={{marginTop:16,
+                  padding:"11px 28px",borderRadius:14,fontWeight:700,fontSize:14,
+                  background:"rgba(0,0,0,0.07)",color:"#444",border:"none"}}>{tx("back",lang)}</button>
+              </div>
+            ) : (<>
+              {/* BIG MOVE CARD */}
+              <div style={{background:"linear-gradient(135deg,rgba(255,107,0,0.08),rgba(255,170,0,0.04))",
+                border:"2px solid rgba(255,107,0,0.22)",borderRadius:20,padding:"14px 16px",marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <span style={{fontSize:12,color:"#aaa",fontWeight:600}}>{tx("stepOf",lang)} {step+1} / {solution.length}</span>
+                  <button className="btn" onClick={handleReset} style={{padding:"4px 10px",borderRadius:9,
+                    fontSize:11,fontWeight:600,background:"rgba(0,0,0,0.06)",color:"#888",border:"none"}}>
+                    {tx("back",lang)}</button>
                 </div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:11,color:"#aaa",fontWeight:600,marginBottom:3}}>
-                    {tx("stepOf",lang)} {step+1} {tx("of",lang)} {solution.length}
+                <div style={{height:4,background:"rgba(0,0,0,0.07)",borderRadius:2,marginBottom:14}}>
+                  <div style={{height:"100%",borderRadius:2,background:"linear-gradient(90deg,#FF6B00,#FFAA00)",
+                    width:`${solution.length?(step/solution.length)*100:0}%`,transition:"width 0.4s ease"}}/>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:16}}>
+                  <div key={curMove} style={{width:80,height:80,borderRadius:20,flexShrink:0,
+                    background:"linear-gradient(135deg,#FF6B00,#FFAA00)",
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:32,fontWeight:900,fontFamily:"monospace",color:"#fff",
+                    boxShadow:"0 8px 24px rgba(255,107,0,0.5)",letterSpacing:"-1px",
+                    animation:"pop 0.4s cubic-bezier(0.34,1.56,0.64,1)"}}>
+                    {curMove}
                   </div>
-                  <div style={{fontSize:14,fontWeight:700,color:"#222",marginBottom:7}}>
-                    {lang==="es"?curInfo?.labelEs:curInfo?.label}
-                  </div>
-                  <div style={{height:5,background:"rgba(0,0,0,0.07)",borderRadius:3}}>
-                    <div style={{height:"100%",borderRadius:3,transition:"width 0.4s ease",
-                      background:"linear-gradient(90deg,#FF6B00,#FFAA00)",
-                      width:`${solution.length?(step/solution.length)*100:0}%`}}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:15,fontWeight:800,color:"#1a1a1a",marginBottom:6}}>
+                      {lang==="es"?curInfo?.labelEs:curInfo?.label}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:28,color:"#FF6B00",lineHeight:1,display:"inline-block",
+                        transform:curMove?.includes("'")?"scaleX(-1)":"none"}}>
+                        {curMove?.startsWith("U")||curMove?.startsWith("D")?"↻":
+                         curMove?.startsWith("R")||curMove?.startsWith("L")?"↕":"↻"}
+                      </span>
+                      <span style={{fontSize:12,color:"#aaa",fontWeight:600}}>
+                        {curMove?.includes("'")?"counter-clockwise ↺":"clockwise ↻"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
-            {phase==="done" && (
-              <div style={{textAlign:"center",padding:"8px 0 14px",animation:"pop 0.4s ease"}}>
-                <div style={{fontSize:42}}>🎉</div>
-                <div style={{fontSize:18,fontWeight:800,color:"#2E7D32",marginTop:4}}>
-                  {tx("solved",lang)}
-                </div>
-              </div>
-            )}
 
-            {/* Move chips */}
-            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:12}}>
-              {solution.map((m,i)=>(
-                <span key={i} style={{
-                  display:"inline-flex",alignItems:"center",padding:"4px 10px",
-                  borderRadius:8,fontFamily:"monospace",fontSize:13,fontWeight:800,
-                  background:i<step?"rgba(46,125,50,0.12)":i===step?"rgba(255,107,0,0.18)":"rgba(0,0,0,0.05)",
-                  color:i<step?"#2E7D32":i===step?"#FF6B00":"#ccc",
-                  border:`1px solid ${i===step?"rgba(255,107,0,0.35)":i<step?"rgba(46,125,50,0.25)":"transparent"}`,
-                  textDecoration:i<step?"line-through":"none"}}>
-                  {m}
-                </span>
-              ))}
-            </div>
-
-            {/* Player */}
-            <div style={{display:"flex",gap:10,justifyContent:"center",alignItems:"center",marginBottom:10}}>
-              <button className="btn" onClick={handlePrev} disabled={step===0||animRef.current} style={{
-                width:50,height:50,borderRadius:"50%",fontSize:18,
-                background:"rgba(0,0,0,0.07)",color:step===0?"#ccc":"#333",border:"none"}}>‹</button>
-              {playing
-                ?<button className="btn" onClick={handlePause} style={{
-                    width:66,height:66,borderRadius:"50%",fontSize:26,
-                    background:"linear-gradient(135deg,#FF6B00,#FFAA00)",color:"#fff",border:"none",
-                    boxShadow:"0 6px 22px rgba(255,107,0,0.5)"}}>⏸</button>
-                :<button className="btn" onClick={handlePlay} disabled={phase==="done"} style={{
-                    width:66,height:66,borderRadius:"50%",fontSize:26,
-                    background:phase==="done"?"rgba(0,0,0,0.08)":"linear-gradient(135deg,#FF6B00,#FFAA00)",
-                    color:phase==="done"?"#ccc":"#fff",border:"none",
-                    boxShadow:phase==="done"?"none":"0 6px 22px rgba(255,107,0,0.5)"}}>▶</button>}
-              <button className="btn" onClick={handleNext} disabled={step>=solution.length} style={{
-                width:50,height:50,borderRadius:"50%",fontSize:18,
-                background:"rgba(0,0,0,0.07)",color:step>=solution.length?"#ccc":"#333",border:"none"}}>›</button>
-              <div style={{display:"flex",gap:4,marginLeft:4}}>
-                {[0.5,1,2].map(s=>(
-                  <button key={s} className="btn" onClick={()=>setSpd(s)} style={{
-                    width:36,height:36,borderRadius:9,fontWeight:800,fontSize:11,
-                    background:spd===s?"#FF6B00":"rgba(0,0,0,0.06)",
-                    color:spd===s?"#fff":"#999",border:"1px solid",
-                    borderColor:spd===s?"#FF6B00":"rgba(0,0,0,0.1)"}}>
-                    {s}×
-                  </button>
+              {/* MOVE CHIPS */}
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:14,maxHeight:56,overflowY:"auto"}}>
+                {solution.map((m,i)=>(
+                  <span key={i} style={{display:"inline-flex",alignItems:"center",
+                    padding:"4px 10px",borderRadius:8,fontFamily:"monospace",fontSize:13,fontWeight:800,
+                    background:i<step?"rgba(46,125,50,0.12)":i===step?"rgba(255,107,0,0.2)":"rgba(0,0,0,0.05)",
+                    color:i<step?"#2E7D32":i===step?"#FF6B00":"#bbb",
+                    border:`1.5px solid ${i===step?"rgba(255,107,0,0.4)":i<step?"rgba(46,125,50,0.3)":"transparent"}`,
+                    textDecoration:i<step?"line-through":"none",transition:"all 0.2s"}}>
+                    {m}
+                  </span>
                 ))}
               </div>
-            </div>
 
-            <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
-              <button className="btn" onClick={handleReset} style={{
-                padding:"9px 18px",borderRadius:12,fontWeight:600,fontSize:13,
-                background:"rgba(0,0,0,0.06)",color:"#444",border:"none"}}>
-                {tx("back",lang)}
-              </button>
-              {step>0 && (
-                <button className="btn" onClick={askAI} disabled={aiLoading} style={{
-                  padding:"9px 18px",borderRadius:12,fontWeight:600,fontSize:13,
-                  background:"rgba(0,0,0,0.06)",color:"#444",border:"none"}}>
-                  {aiLoading?"⏳…":tx("aiBtn",lang)}
+              {/* PREV / NEXT only — no Play */}
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <button className="btn" onClick={handlePrev} disabled={step===0||!!animRef.current}
+                  style={{flex:1,padding:"13px",borderRadius:16,fontWeight:700,fontSize:15,border:"none",
+                    background:step===0||animRef.current?"rgba(0,0,0,0.05)":"rgba(0,0,0,0.09)",
+                    color:step===0||animRef.current?"#ccc":"#444"}}>
+                  ← {tx("prev",lang)}
                 </button>
-              )}
-            </div>
-            {aiText && (
-              <div style={{marginTop:10,background:"rgba(255,107,0,0.06)",
-                border:"1px solid rgba(255,107,0,0.15)",borderRadius:12,padding:"10px 12px",
-                animation:"fadeUp 0.3s ease"}}>
-                <p style={{fontSize:13,color:"#555",lineHeight:1.55,margin:0}}>{aiText}</p>
+                <button className="btn" onClick={handleNext} disabled={step>=solution.length||!!animRef.current}
+                  style={{flex:2,padding:"14px",borderRadius:16,fontWeight:800,fontSize:16,border:"none",
+                    background:step>=solution.length||animRef.current
+                      ?"rgba(0,0,0,0.06)":"linear-gradient(135deg,#FF6B00,#FFAA00)",
+                    color:step>=solution.length||animRef.current?"#ccc":"#fff",
+                    boxShadow:step<solution.length&&!animRef.current?"0 5px 20px rgba(255,107,0,0.42)":"none",
+                    display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  {animRef.current
+                    ?<span style={{animation:"spin 0.8s linear infinite",display:"inline-block"}}>⟳</span>
+                    :<>{tx("next",lang)} →</>}
+                </button>
               </div>
-            )}
+
+              {step>0&&(
+                <div style={{marginTop:10}}>
+                  {aiLoading
+                    ?<div style={{textAlign:"center",color:"#aaa",fontSize:13,animation:"pulse 1.2s infinite",padding:"8px 0"}}>⏳ Thinking…</div>
+                    :aiText
+                      ?<div style={{background:"rgba(255,107,0,0.06)",border:"1px solid rgba(255,107,0,0.15)",
+                          borderRadius:12,padding:"10px 12px",animation:"fadeUp 0.3s ease"}}>
+                          <p style={{fontSize:13,color:"#555",lineHeight:1.55,margin:0}}>{aiText}</p>
+                        </div>
+                      :<button className="btn" onClick={askAI} style={{width:"100%",padding:"9px",borderRadius:12,
+                          fontWeight:600,fontSize:13,background:"rgba(0,0,0,0.05)",color:"#888",border:"none"}}>
+                          🤖 {tx("aiBtn",lang)}</button>}
+                </div>
+              )}
+            </>)}
           </div>
         )}
+
       </div>
     </div>
   );
