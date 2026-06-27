@@ -598,8 +598,12 @@ export default function RubikSolverPage() {
         const FACE_ORDER_ADV = ["U","D","F","R","B","L"];
         const curIdx = FACE_ORDER_ADV.indexOf(scanFace);
         const nextFace = curIdx < FACE_ORDER_ADV.length-1 ? FACE_ORDER_ADV[curIdx+1] : null;
-        if(nextFace) setScanFace(nextFace);
-        else stopCamera();
+        if(nextFace) {
+          setScanFace(nextFace);
+        } else {
+          // All done! Close scanner
+          stopCamera();
+        }
       } else { alert("Could not detect colors. Try better lighting."); }
     } catch { alert("Scan failed."); }
     setScanning(false);
