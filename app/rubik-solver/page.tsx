@@ -522,11 +522,21 @@ export default function RubikSolverPage() {
         body:JSON.stringify({imageBase64:b64,face:scanFace})});
       const data = await res.json();
       if (data.colors?.length===9) {
-        const arr=[...data.colors]; arr[4]=CENTERS[scanFace];
+        const arr=[...data.colors];
+        // Preserve center color that user set (don't override with AI detection)
+        const preservedCenter = stateRef.current[scanFace]?.[4];
+        if(preservedCenter && preservedCenter!=="X") arr[4]=preservedCenter;
         syncState({...stateRef.current,[scanFace]:arr.join("")});
-        const order = ["F","R","B","L","U","D"];
-        const next = order[order.indexOf(scanFace)+1];
-        if (next) setScanFace(next); else stopCamera();
+        // Auto-advance to next face in sequence
+        const FACE_ORDER_ADV = ["U","D","F","R","B","L"];
+        const curIdx = FACE_ORDER_ADV.indexOf(scanFace);
+        const nextFace = curIdx < FACE_ORDER_ADV.length-1 ? FACE_ORDER_ADV[curIdx+1] : null;
+        if(nextFace) {
+          setScanFace(nextFace);
+        } else {
+          // All faces scanned!
+          stopCamera();
+        }
       } else { alert("Could not detect colors. Try better lighting."); }
     } catch { alert("Scan failed."); }
     setScanning(false);
@@ -558,6 +568,8 @@ export default function RubikSolverPage() {
         @keyframes pop{0%{transform:scale(0.8);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @keyframes cubeRotateIn{from{opacity:0;transform:scale(0.7) rotateY(-30deg)}to{opacity:1}}
         .btn{border:none;cursor:pointer;font-family:inherit;transition:all 0.18s;outline:none;}
         .btn:active{transform:scale(0.93)!important;}
       `}</style>
@@ -629,138 +641,184 @@ export default function RubikSolverPage() {
 
       {/* CAMERA OVERLAY */}
       {showScan && (()=>{
-        // Ordered scan sequence: White top → Yellow bottom → Orange front → Red right → Blue back → Green left
-        const SCAN_SEQUENCE: {face:string, emoji:string, hint:string, color:string}[] = [
-          {face:"U", emoji:"⬜", hint:"White face — hold cube with WHITE on top, scan top", color:"#F0F0F0"},
-          {face:"D", emoji:"🟨", hint:"Yellow face — flip cube, scan YELLOW on top", color:"#FFD700"},
-          {face:"F", emoji:"🟧", hint:"Orange face — hold cube normally, scan FRONT face", color:"#FF6600"},
-          {face:"R", emoji:"🟥", hint:"Red face — rotate cube 90° right, scan FRONT face", color:"#CC0000"},
-          {face:"B", emoji:"🟦", hint:"Blue face — rotate cube 90° more, scan FRONT face", color:"#0050C8"},
-          {face:"L", emoji:"🟩", hint:"Green face — rotate cube 90° more, scan FRONT face", color:"#009000"},
-        ];
-        const seqIdx = SCAN_SEQUENCE.findIndex(s=>s.face===scanFace);
-        const cur = SCAN_SEQUENCE[seqIdx] ?? SCAN_SEQUENCE[0];
-        const scannedFaces = SCAN_SEQUENCE.slice(0,seqIdx).map(s=>s.face)
-          .filter(fc=>!cubeState[fc]?.includes("X"));
-        const totalDone = scannedFaces.length;
+        // ── Scan sequence: defined by user center colors ──────────────────
+        type ScanStep = {face:string, label:string, rotX:number, rotY:number, instruction:string};
+        const centerColors = cubeState;
+        // Build sequence: U first, D second, then F/R/B/L
+        const faceEmoji: Record<string,string> = {U:"⬜",D:"🟨",F:"🟧",R:"🟥",B:"🟦",L:"🟩"};
+        const faceName: Record<string,string> = {U:"Top",D:"Bottom",F:"Front",R:"Right",B:"Back",L:"Left"};
+        // Rotation of the mini-cube animation for each face
+        const faceAnim: Record<string,{rotX:number,rotY:number}> = {
+          U:{rotX:-90,rotY:0},
+          D:{rotX:90,rotY:0},
+          F:{rotX:-20,rotY:20},
+          R:{rotX:-20,rotY:-70},
+          B:{rotX:-20,rotY:200},
+          L:{rotX:-20,rotY:110},
+        };
+        const scanInstructions: Record<string,string> = {
+          U:"Hold cube with this color facing UP. Point camera down at the top.",
+          D:"Flip cube so this color faces UP. Point camera down.",
+          F:"Hold cube normally. Point camera at the FRONT face.",
+          R:"Rotate cube 90° to the right. Point camera at FRONT.",
+          B:"Rotate cube 90° more. Point camera at FRONT.",
+          L:"Rotate cube 90° more. Point camera at FRONT.",
+        };
+        const FACE_ORDER = ["U","D","F","R","B","L"];
+        const seqIdx = FACE_ORDER.indexOf(scanFace);
+        const prevFace = seqIdx>0 ? FACE_ORDER[seqIdx-1] : null;
+        // Color of current face center
+        const centerColorKey = cubeState[scanFace]?.[4] ?? "X";
+        const centerHex: Record<string,string> = {W:"#FFFFFF",Y:"#FFD700",R:"#CC0000",O:"#FF6600",B:"#0050C8",G:"#009000",X:"#888"};
+        const accentColor = centerHex[centerColorKey] ?? "#FF6B00";
 
         return (
-        <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",flexDirection:"column",background:"#000"}}>
-          {/* Video */}
-          <div style={{position:"relative",flex:1,minHeight:0,overflow:"hidden"}}>
-            <video ref={videoRef} autoPlay playsInline muted
-              style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+        <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",flexDirection:"column",background:"#0a0a14"}}>
 
-            {/* Top bar */}
-            <div style={{position:"absolute",top:0,left:0,right:0,zIndex:3,
-              display:"flex",alignItems:"center",justifyContent:"space-between",
-              padding:"12px 16px",
-              background:"linear-gradient(to bottom,rgba(0,0,0,0.8),transparent)"}}>
-              <button className="btn" onClick={stopCamera} style={{
-                color:"#fff",background:"rgba(0,0,0,0.5)",borderRadius:20,
-                padding:"7px 16px",fontSize:14,fontWeight:600,
-                border:"1px solid rgba(255,255,255,0.2)"}}>
-                ✕
-              </button>
-              {/* Progress dots */}
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                {SCAN_SEQUENCE.map((s,i)=>(
-                  <div key={s.face} style={{
-                    width: i===seqIdx?12:8, height: i===seqIdx?12:8,
-                    borderRadius:"50%",
-                    background: i<seqIdx?"#4CAF50": i===seqIdx?cur.color:"rgba(255,255,255,0.25)",
-                    border: i===seqIdx?`2px solid #fff`:"none",
-                    transition:"all 0.3s",
-                    fontSize:10, display:"flex",alignItems:"center",justifyContent:"center"
-                  }}>
-                    {i<seqIdx && <span style={{fontSize:7}}>✓</span>}
-                  </div>
-                ))}
-              </div>
-              <div style={{width:48}}/>
-            </div>
-
-            {/* 3×3 guide grid */}
-            <div style={{position:"absolute",top:"50%",left:"50%",zIndex:2,
-              transform:"translate(-50%,-50%)",
-              width:"min(68vw,240px)",height:"min(68vw,240px)",
-              border:`3px solid ${cur.color}`,borderRadius:10,
-              boxShadow:`0 0 0 9999px rgba(0,0,0,0.5),0 0 24px ${cur.color}66`}}>
-              {[1,2].map(i=>(
-                <div key={"h"+i} style={{position:"absolute",top:`${i*33.33}%`,left:0,
-                  width:"100%",height:"1.5px",background:`${cur.color}99`}}/>
-              ))}
-              {[1,2].map(i=>(
-                <div key={"v"+i} style={{position:"absolute",left:`${i*33.33}%`,top:0,
-                  width:"1.5px",height:"100%",background:`${cur.color}99`}}/>
-              ))}
-              {/* Color label inside frame */}
-              <div style={{position:"absolute",top:-36,left:0,right:0,textAlign:"center",
-                color:cur.color,fontSize:13,fontWeight:800,
-                textShadow:"0 1px 6px rgba(0,0,0,0.9)",letterSpacing:"0.3px"}}>
-                {cur.emoji} {seqIdx+1}/6
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom panel */}
-          <div style={{flexShrink:0,background:"#0a0a0a",
-            padding:"12px 16px",
-            paddingBottom:"max(18px,env(safe-area-inset-bottom))"}}>
-
-            {/* Instruction card */}
-            <div style={{background:`${cur.color}18`,border:`1.5px solid ${cur.color}44`,
-              borderRadius:14,padding:"10px 14px",marginBottom:12,
-              display:"flex",alignItems:"center",gap:12}}>
-              <div style={{fontSize:30,flexShrink:0}}>{cur.emoji}</div>
-              <div>
-                <div style={{color:cur.color,fontWeight:800,fontSize:13,marginBottom:2}}>
-                  Step {seqIdx+1} of 6
-                </div>
-                <div style={{color:"#ccc",fontSize:12,lineHeight:1.4}}>
-                  {cur.hint}
-                </div>
-              </div>
-            </div>
-
-            {/* Mini sequence navigator */}
-            <div style={{display:"flex",gap:5,justifyContent:"center",marginBottom:12}}>
-              {SCAN_SEQUENCE.map((s,i)=>{
-                const isDone = !cubeState[s.face]?.includes("X") && i!==seqIdx;
-                const isCur = i===seqIdx;
+          {/* ── TOP BAR ── */}
+          <div style={{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",
+            padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+            <button className="btn" onClick={stopCamera} style={{
+              color:"#aaa",background:"rgba(255,255,255,0.07)",borderRadius:12,
+              padding:"7px 14px",fontSize:13,fontWeight:600,border:"1px solid rgba(255,255,255,0.1)"}}>
+              ✕ Stop
+            </button>
+            {/* Progress: 6 colored dots */}
+            <div style={{display:"flex",gap:5,alignItems:"center"}}>
+              {FACE_ORDER.map((fc,i)=>{
+                const ck = cubeState[fc]?.[4] ?? "X";
+                const hex = centerHex[ck] ?? "#888";
+                const done = !cubeState[fc]?.includes("X");
+                const isCur = fc===scanFace;
                 return (
-                  <button key={s.face} className="btn" onClick={()=>setScanFace(s.face)} style={{
-                    flex:1,padding:"7px 4px",borderRadius:10,fontSize:18,
-                    background:isCur?`${s.color}33`:isDone?"rgba(76,175,80,0.15)":"rgba(255,255,255,0.05)",
-                    border:`2px solid ${isCur?s.color:isDone?"rgba(76,175,80,0.5)":"rgba(255,255,255,0.1)"}`,
-                    position:"relative"}}>
-                    {s.emoji}
-                    {isDone && (
-                      <div style={{position:"absolute",top:-4,right:-4,width:14,height:14,
-                        borderRadius:"50%",background:"#4CAF50",
-                        display:"flex",alignItems:"center",justifyContent:"center",
-                        fontSize:8,color:"#fff",fontWeight:800}}>✓</div>
-                    )}
-                  </button>
+                  <div key={fc} title={faceName[fc]} style={{
+                    width:isCur?14:10, height:isCur?14:10,
+                    borderRadius:"50%", cursor:"pointer",
+                    background: done?"#4CAF50": isCur?hex:"rgba(255,255,255,0.15)",
+                    border:isCur?`2.5px solid #fff`:"2px solid transparent",
+                    transition:"all 0.3s", display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:8,color:"#fff",fontWeight:900}}
+                    onClick={()=>setScanFace(fc)}>
+                    {done && !isCur ? "✓" : ""}
+                  </div>
                 );
               })}
             </div>
+            <button className="btn" onClick={()=>{
+              const nextIdx = seqIdx+1;
+              if(nextIdx < FACE_ORDER.length) setScanFace(FACE_ORDER[nextIdx]);
+              else stopCamera();
+            }} style={{
+              color:"#aaa",background:"rgba(255,255,255,0.07)",borderRadius:12,
+              padding:"7px 14px",fontSize:13,fontWeight:600,border:"1px solid rgba(255,255,255,0.1)"}}>
+              Skip →
+            </button>
+          </div>
 
-            {/* BIG scan button */}
-            <button
-              className="btn"
-              onClick={captureAndScan}
-              disabled={scanning}
+          {/* ── CUBE ANIMATION + INSTRUCTION ── */}
+          <div style={{flexShrink:0,padding:"16px",display:"flex",gap:16,alignItems:"center",
+            borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+            {/* Mini CSS 3D cube showing which face to point at */}
+            <div style={{
+              width:80,height:80,flexShrink:0,
+              perspective:"200px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <div style={{
+                width:50,height:50,position:"relative",transformStyle:"preserve-3d",
+                transform:`rotateX(${faceAnim[scanFace]?.rotX ?? -20}deg) rotateY(${faceAnim[scanFace]?.rotY ?? 20}deg)`,
+                animation:"cubeRotateIn 0.5s ease",
+                transition:"transform 0.6s cubic-bezier(0.34,1.56,0.64,1)"}}>
+                {/* 6 faces of mini cube */}
+                {([
+                  {f:"U",tr:"rotateX(90deg) translateZ(25px)"},
+                  {f:"D",tr:"rotateX(-90deg) translateZ(25px)"},
+                  {f:"F",tr:"translateZ(25px)"},
+                  {f:"B",tr:"rotateY(180deg) translateZ(25px)"},
+                  {f:"R",tr:"rotateY(90deg) translateZ(25px)"},
+                  {f:"L",tr:"rotateY(-90deg) translateZ(25px)"},
+                ] as {f:string,tr:string}[]).map(({f,tr})=>{
+                  const ck = cubeState[f]?.[4] ?? "X";
+                  const hex = centerHex[ck] ?? "#333";
+                  const isTarget = f===scanFace;
+                  return (
+                    <div key={f} style={{
+                      position:"absolute",
+                      width:50,height:50,
+                      transform:tr,
+                      background: isTarget ? hex : "#1a1a2e",
+                      border:`2px solid ${isTarget ? "#fff" : "#333"}`,
+                      borderRadius:4,
+                      boxShadow: isTarget ? `0 0 20px ${hex}99, inset 0 0 10px rgba(255,255,255,0.2)` : "none",
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      fontSize: isTarget ? 18 : 0,
+                    }}>
+                      {isTarget && "📷"}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Text instruction */}
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                <div style={{width:14,height:14,borderRadius:"50%",background:accentColor,
+                  boxShadow:`0 0 8px ${accentColor}88`,flexShrink:0}}/>
+                <span style={{color:"#fff",fontWeight:800,fontSize:15}}>
+                  Face {seqIdx+1}/6 — {faceName[scanFace]}
+                </span>
+              </div>
+              <p style={{color:"#aaa",fontSize:12,lineHeight:1.5,margin:0}}>
+                {scanInstructions[scanFace]}
+              </p>
+            </div>
+          </div>
+
+          {/* ── CAMERA VIEWFINDER ── */}
+          <div style={{position:"relative",flex:1,minHeight:0,overflow:"hidden"}}>
+            <video ref={videoRef} autoPlay playsInline muted
+              style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+            {/* 3×3 guide */}
+            <div style={{position:"absolute",top:"50%",left:"50%",zIndex:2,
+              transform:"translate(-50%,-50%)",
+              width:"min(68vw,240px)",height:"min(68vw,240px)",
+              border:`3px solid ${accentColor}`,borderRadius:10,
+              boxShadow:`0 0 0 9999px rgba(0,0,0,0.45), 0 0 30px ${accentColor}55`}}>
+              {[1,2].map(i=>(
+                <div key={"h"+i} style={{position:"absolute",top:`${i*33.33}%`,left:0,
+                  width:"100%",height:"1.5px",background:`${accentColor}88`}}/>
+              ))}
+              {[1,2].map(i=>(
+                <div key={"v"+i} style={{position:"absolute",left:`${i*33.33}%`,top:0,
+                  width:"1.5px",height:"100%",background:`${accentColor}88`}}/>
+              ))}
+              {/* Corner markers */}
+              {[["-6px","-6px","borderTop","borderLeft"],["-6px","auto","borderTop","borderRight"],
+                ["auto","-6px","borderBottom","borderLeft"],["auto","auto","borderBottom","borderRight"]
+              ].map(([t,r,bt,bl],ci)=>(
+                <div key={ci} style={{position:"absolute",
+                  top:t==="auto"?undefined:t, bottom:t==="auto"?"−6px":undefined,
+                  left:r==="auto"?undefined:r, right:r==="auto"?"−6px":undefined,
+                  width:18,height:18,
+                  [bt]:`3px solid #fff`,[bl]:`3px solid #fff`}}/>
+              ))}
+            </div>
+          </div>
+
+          {/* ── SCAN BUTTON ── */}
+          <div style={{flexShrink:0,background:"rgba(5,5,15,0.98)",
+            padding:"12px 16px",paddingBottom:"max(18px,env(safe-area-inset-bottom))"}}>
+            <button className="btn" onClick={captureAndScan} disabled={scanning}
               style={{
                 width:"100%",padding:"17px",borderRadius:18,
                 fontWeight:800,fontSize:17,border:"none",
-                background:scanning?"rgba(255,255,255,0.08)":`linear-gradient(135deg,${cur.color},${cur.color}cc)`,
+                background:scanning?"rgba(255,255,255,0.07)":`linear-gradient(135deg,${accentColor},${accentColor}bb)`,
                 color:scanning?"#666":"#fff",
-                boxShadow:scanning?"none":`0 6px 24px ${cur.color}55`,
-                display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+                boxShadow:scanning?"none":`0 6px 24px ${accentColor}55`,
+                display:"flex",alignItems:"center",justifyContent:"center",gap:12,
+                transition:"all 0.2s"}}>
               {scanning
-                ? <span style={{color:"#aaa"}}>⏳ Analyzing with AI…</span>
-                : <><span style={{fontSize:22}}>📷</span> Scan {cur.emoji} face</>}
+                ? <><span style={{fontSize:20,animation:"spin 1s linear infinite"}}>⟳</span> Analyzing…</>
+                : <><span style={{fontSize:22}}>📷</span> Scan this face</>}
             </button>
           </div>
         </div>
