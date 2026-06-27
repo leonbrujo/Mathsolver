@@ -202,10 +202,11 @@ function CSSCube({state, rotX, rotY, animMove, animProgress, selectedFace, onSti
                   const colorKey = faceState[sIdx] ?? "X";
                   const col = COLORS[colorKey] ?? COLORS.X;
                   const isCenter = sIdx === 4;
+                  const isLocked = isCenter && (face === "U" || face === "D");
                   return (
                     <div
                       key={gridIdx}
-                      onClick={() => !isCenter && onStickerClick?.(face, sIdx)}
+                      onClick={() => !isLocked && onStickerClick?.(face, sIdx)}
                       style={{
                         background: col.bg,
                         borderRadius: 4,
