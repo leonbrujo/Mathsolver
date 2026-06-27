@@ -628,63 +628,125 @@ export default function RubikSolverPage() {
       </div>
 
       {/* CAMERA OVERLAY */}
-      {showScan && (
+      {showScan && (()=>{
+        // Ordered scan sequence: White top → Yellow bottom → Orange front → Red right → Blue back → Green left
+        const SCAN_SEQUENCE: {face:string, emoji:string, hint:string, color:string}[] = [
+          {face:"U", emoji:"⬜", hint:"White face — hold cube with WHITE on top, scan top", color:"#F0F0F0"},
+          {face:"D", emoji:"🟨", hint:"Yellow face — flip cube, scan YELLOW on top", color:"#FFD700"},
+          {face:"F", emoji:"🟧", hint:"Orange face — hold cube normally, scan FRONT face", color:"#FF6600"},
+          {face:"R", emoji:"🟥", hint:"Red face — rotate cube 90° right, scan FRONT face", color:"#CC0000"},
+          {face:"B", emoji:"🟦", hint:"Blue face — rotate cube 90° more, scan FRONT face", color:"#0050C8"},
+          {face:"L", emoji:"🟩", hint:"Green face — rotate cube 90° more, scan FRONT face", color:"#009000"},
+        ];
+        const seqIdx = SCAN_SEQUENCE.findIndex(s=>s.face===scanFace);
+        const cur = SCAN_SEQUENCE[seqIdx] ?? SCAN_SEQUENCE[0];
+        const scannedFaces = SCAN_SEQUENCE.slice(0,seqIdx).map(s=>s.face)
+          .filter(fc=>!cubeState[fc]?.includes("X"));
+        const totalDone = scannedFaces.length;
+
+        return (
         <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",flexDirection:"column",background:"#000"}}>
-          {/* Video area */}
+          {/* Video */}
           <div style={{position:"relative",flex:1,minHeight:0,overflow:"hidden"}}>
             <video ref={videoRef} autoPlay playsInline muted
               style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+
             {/* Top bar */}
             <div style={{position:"absolute",top:0,left:0,right:0,zIndex:3,
               display:"flex",alignItems:"center",justifyContent:"space-between",
-              padding:"14px 16px",
-              background:"linear-gradient(to bottom,rgba(0,0,0,0.75),transparent)"}}>
+              padding:"12px 16px",
+              background:"linear-gradient(to bottom,rgba(0,0,0,0.8),transparent)"}}>
               <button className="btn" onClick={stopCamera} style={{
                 color:"#fff",background:"rgba(0,0,0,0.5)",borderRadius:20,
-                padding:"8px 18px",fontSize:14,fontWeight:600,
-                border:"1px solid rgba(255,255,255,0.25)"}}>
-                ✕ Cancel
+                padding:"7px 16px",fontSize:14,fontWeight:600,
+                border:"1px solid rgba(255,255,255,0.2)"}}>
+                ✕
               </button>
-              <span style={{fontWeight:700,fontSize:15,color:"#FFD700",
-                textShadow:"0 1px 6px rgba(0,0,0,0.9)"}}>
-                📷 {FACE_LABEL[scanFace]?.en} face
-              </span>
-              <div style={{width:80}}/>
+              {/* Progress dots */}
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                {SCAN_SEQUENCE.map((s,i)=>(
+                  <div key={s.face} style={{
+                    width: i===seqIdx?12:8, height: i===seqIdx?12:8,
+                    borderRadius:"50%",
+                    background: i<seqIdx?"#4CAF50": i===seqIdx?cur.color:"rgba(255,255,255,0.25)",
+                    border: i===seqIdx?`2px solid #fff`:"none",
+                    transition:"all 0.3s",
+                    fontSize:10, display:"flex",alignItems:"center",justifyContent:"center"
+                  }}>
+                    {i<seqIdx && <span style={{fontSize:7}}>✓</span>}
+                  </div>
+                ))}
+              </div>
+              <div style={{width:48}}/>
             </div>
-            {/* 3x3 guide */}
+
+            {/* 3×3 guide grid */}
             <div style={{position:"absolute",top:"50%",left:"50%",zIndex:2,
               transform:"translate(-50%,-50%)",
-              width:"min(70vw,250px)",height:"min(70vw,250px)",
-              border:"3px solid #FFD700",borderRadius:10,
-              boxShadow:"0 0 0 9999px rgba(0,0,0,0.5),0 0 20px rgba(255,215,0,0.4)"}}>
+              width:"min(68vw,240px)",height:"min(68vw,240px)",
+              border:`3px solid ${cur.color}`,borderRadius:10,
+              boxShadow:`0 0 0 9999px rgba(0,0,0,0.5),0 0 24px ${cur.color}66`}}>
               {[1,2].map(i=>(
                 <div key={"h"+i} style={{position:"absolute",top:`${i*33.33}%`,left:0,
-                  width:"100%",height:"1.5px",background:"rgba(255,215,0,0.6)"}}/>
+                  width:"100%",height:"1.5px",background:`${cur.color}99`}}/>
               ))}
               {[1,2].map(i=>(
                 <div key={"v"+i} style={{position:"absolute",left:`${i*33.33}%`,top:0,
-                  width:"1.5px",height:"100%",background:"rgba(255,215,0,0.6)"}}/>
+                  width:"1.5px",height:"100%",background:`${cur.color}99`}}/>
               ))}
+              {/* Color label inside frame */}
+              <div style={{position:"absolute",top:-36,left:0,right:0,textAlign:"center",
+                color:cur.color,fontSize:13,fontWeight:800,
+                textShadow:"0 1px 6px rgba(0,0,0,0.9)",letterSpacing:"0.3px"}}>
+                {cur.emoji} {seqIdx+1}/6
+              </div>
             </div>
           </div>
 
-          {/* Bottom controls — fixed, always on screen */}
+          {/* Bottom panel */}
           <div style={{flexShrink:0,background:"#0a0a0a",
-            padding:"12px 16px 20px",
-            paddingBottom:"max(20px,env(safe-area-inset-bottom))"}}>
-            {/* Face buttons */}
-            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:12,flexWrap:"wrap"}}>
-              {["F","R","B","L","U","D"].map(fc=>(
-                <button key={fc} className="btn" onClick={()=>setScanFace(fc)} style={{
-                  padding:"7px 12px",borderRadius:10,fontSize:13,fontWeight:700,
-                  background:scanFace===fc?"#FF6B00":"rgba(255,255,255,0.07)",
-                  color:scanFace===fc?"#fff":"#777",
-                  border:`1.5px solid ${scanFace===fc?"#FF6B00":"rgba(255,255,255,0.12)"}`}}>
-                  {FACE_LABEL[fc]?.en}
-                </button>
-              ))}
+            padding:"12px 16px",
+            paddingBottom:"max(18px,env(safe-area-inset-bottom))"}}>
+
+            {/* Instruction card */}
+            <div style={{background:`${cur.color}18`,border:`1.5px solid ${cur.color}44`,
+              borderRadius:14,padding:"10px 14px",marginBottom:12,
+              display:"flex",alignItems:"center",gap:12}}>
+              <div style={{fontSize:30,flexShrink:0}}>{cur.emoji}</div>
+              <div>
+                <div style={{color:cur.color,fontWeight:800,fontSize:13,marginBottom:2}}>
+                  Step {seqIdx+1} of 6
+                </div>
+                <div style={{color:"#ccc",fontSize:12,lineHeight:1.4}}>
+                  {cur.hint}
+                </div>
+              </div>
             </div>
-            {/* Capture button */}
+
+            {/* Mini sequence navigator */}
+            <div style={{display:"flex",gap:5,justifyContent:"center",marginBottom:12}}>
+              {SCAN_SEQUENCE.map((s,i)=>{
+                const isDone = !cubeState[s.face]?.includes("X") && i!==seqIdx;
+                const isCur = i===seqIdx;
+                return (
+                  <button key={s.face} className="btn" onClick={()=>setScanFace(s.face)} style={{
+                    flex:1,padding:"7px 4px",borderRadius:10,fontSize:18,
+                    background:isCur?`${s.color}33`:isDone?"rgba(76,175,80,0.15)":"rgba(255,255,255,0.05)",
+                    border:`2px solid ${isCur?s.color:isDone?"rgba(76,175,80,0.5)":"rgba(255,255,255,0.1)"}`,
+                    position:"relative"}}>
+                    {s.emoji}
+                    {isDone && (
+                      <div style={{position:"absolute",top:-4,right:-4,width:14,height:14,
+                        borderRadius:"50%",background:"#4CAF50",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:8,color:"#fff",fontWeight:800}}>✓</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* BIG scan button */}
             <button
               className="btn"
               onClick={captureAndScan}
@@ -692,19 +754,18 @@ export default function RubikSolverPage() {
               style={{
                 width:"100%",padding:"17px",borderRadius:18,
                 fontWeight:800,fontSize:17,border:"none",
-                background:scanning
-                  ?"rgba(255,255,255,0.08)"
-                  :"linear-gradient(135deg,#FF6B00,#FFAA00)",
-                color:scanning?"#888":"#fff",
-                boxShadow:scanning?"none":"0 6px 24px rgba(255,107,0,0.55)",
+                background:scanning?"rgba(255,255,255,0.08)":`linear-gradient(135deg,${cur.color},${cur.color}cc)`,
+                color:scanning?"#666":"#fff",
+                boxShadow:scanning?"none":`0 6px 24px ${cur.color}55`,
                 display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
               {scanning
-                ? <span>⏳ Analyzing with AI…</span>
-                : <span>📷 &nbsp;Scan {FACE_LABEL[scanFace]?.en} face</span>}
+                ? <span style={{color:"#aaa"}}>⏳ Analyzing with AI…</span>
+                : <><span style={{fontSize:22}}>📷</span> Scan {cur.emoji} face</>}
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* BOTTOM PANEL */}
       <div style={{flexShrink:0,background:"rgba(255,255,255,0.95)",backdropFilter:"blur(30px)",
