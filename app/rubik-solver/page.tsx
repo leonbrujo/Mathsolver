@@ -641,184 +641,232 @@ export default function RubikSolverPage() {
 
       {/* CAMERA OVERLAY */}
       {showScan && (()=>{
-        // ── Scan sequence: defined by user center colors ──────────────────
-        type ScanStep = {face:string, label:string, rotX:number, rotY:number, instruction:string};
-        const centerColors = cubeState;
-        // Build sequence: U first, D second, then F/R/B/L
-        const faceEmoji: Record<string,string> = {U:"⬜",D:"🟨",F:"🟧",R:"🟥",B:"🟦",L:"🟩"};
+        const centerHex: Record<string,string> = {
+          W:"#FFFFFF",Y:"#FFD700",R:"#CC0000",O:"#FF6600",B:"#0050C8",G:"#009000",X:"#444"
+        };
+        const centerLabel: Record<string,string> = {
+          W:"White",Y:"Yellow",R:"Red",O:"Orange",B:"Blue",G:"Green",X:"?"
+        };
         const faceName: Record<string,string> = {U:"Top",D:"Bottom",F:"Front",R:"Right",B:"Back",L:"Left"};
-        // Rotation of the mini-cube animation for each face
-        const faceAnim: Record<string,{rotX:number,rotY:number}> = {
-          U:{rotX:-90,rotY:0},
-          D:{rotX:90,rotY:0},
-          F:{rotX:-20,rotY:20},
-          R:{rotX:-20,rotY:-70},
-          B:{rotX:-20,rotY:200},
-          L:{rotX:-20,rotY:110},
-        };
-        const scanInstructions: Record<string,string> = {
-          U:"Hold cube with this color facing UP. Point camera down at the top.",
-          D:"Flip cube so this color faces UP. Point camera down.",
-          F:"Hold cube normally. Point camera at the FRONT face.",
-          R:"Rotate cube 90° to the right. Point camera at FRONT.",
-          B:"Rotate cube 90° more. Point camera at FRONT.",
-          L:"Rotate cube 90° more. Point camera at FRONT.",
-        };
         const FACE_ORDER = ["U","D","F","R","B","L"];
         const seqIdx = FACE_ORDER.indexOf(scanFace);
-        const prevFace = seqIdx>0 ? FACE_ORDER[seqIdx-1] : null;
-        // Color of current face center
-        const centerColorKey = cubeState[scanFace]?.[4] ?? "X";
-        const centerHex: Record<string,string> = {W:"#FFFFFF",Y:"#FFD700",R:"#CC0000",O:"#FF6600",B:"#0050C8",G:"#009000",X:"#888"};
-        const accentColor = centerHex[centerColorKey] ?? "#FF6B00";
+
+        // For each scan step: which color is UP, which is toward camera
+        // Assumes user holds cube: White=U, Yellow=D always
+        // F=Orange front, R=Red right, B=Blue back, L=Green left
+        type StepGuide = {
+          camFace: string;   // face pointing at camera
+          upFace: string;    // face pointing up
+          rightFace: string; // face to the right
+          rotate: string;    // human instruction
+        };
+        const STEP_GUIDE: Record<string,StepGuide> = {
+          U: {camFace:"U", upFace:"B",  rightFace:"R", rotate:"Tilt cube toward you — point camera DOWN at top"},
+          D: {camFace:"D", upFace:"F",  rightFace:"R", rotate:"Flip cube upside down — point camera DOWN at bottom"},
+          F: {camFace:"F", upFace:"U",  rightFace:"R", rotate:"Hold cube normally — camera faces FRONT"},
+          R: {camFace:"R", upFace:"U",  rightFace:"B", rotate:"Rotate cube 90° right — camera faces RIGHT side"},
+          B: {camFace:"B", upFace:"U",  rightFace:"L", rotate:"Rotate cube 90° more — camera faces BACK"},
+          L: {camFace:"L", upFace:"U",  rightFace:"F", rotate:"Rotate cube 90° more — camera faces LEFT side"},
+        };
+
+        const guide = STEP_GUIDE[scanFace];
+        const camColorKey  = cubeState[guide?.camFace]?.[4]  ?? "X";
+        const upColorKey   = cubeState[guide?.upFace]?.[4]   ?? "X";
+        const rightColorKey= cubeState[guide?.rightFace]?.[4]?? "X";
+        const accentColor  = centerHex[camColorKey]  ?? "#FF6B00";
+        const upColor      = centerHex[upColorKey]   ?? "#888";
+        const rightColor   = centerHex[rightColorKey]?? "#888";
+
+        // Mini flat diagram: 3 visible faces (top, front, right) as colored rectangles
+        // Shows exactly what the cube looks like from current viewing angle
+        const DiagramFace = ({label, hex, size, style}: {label:string,hex:string,size:number,style?:React.CSSProperties}) => (
+          <div style={{
+            width:size, height:size,
+            background:hex==="#FFFFFF"?"#f0f0e8":hex,
+            border:`2px solid ${hex==="#FFFFFF"?"#ccc":"rgba(0,0,0,0.3)"}`,
+            borderRadius:4,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:size>40?11:9,fontWeight:700,
+            color:hex==="#FFFFFF"||hex==="#FFD700"?"#333":"#fff",
+            textShadow:"none",
+            flexShrink:0,
+            ...style
+          }}>
+            {label}
+          </div>
+        );
 
         return (
-        <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",flexDirection:"column",background:"#0a0a14"}}>
+        <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",
+          flexDirection:"column",background:"#0a0a14",overflowY:"auto"}}>
 
           {/* ── TOP BAR ── */}
-          <div style={{flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",
-            padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+          <div style={{flexShrink:0,display:"flex",alignItems:"center",
+            justifyContent:"space-between",padding:"12px 16px",
+            borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
             <button className="btn" onClick={stopCamera} style={{
               color:"#aaa",background:"rgba(255,255,255,0.07)",borderRadius:12,
-              padding:"7px 14px",fontSize:13,fontWeight:600,border:"1px solid rgba(255,255,255,0.1)"}}>
+              padding:"7px 14px",fontSize:13,fontWeight:600,
+              border:"1px solid rgba(255,255,255,0.1)"}}>
               ✕ Stop
             </button>
-            {/* Progress: 6 colored dots */}
+            {/* Progress dots */}
             <div style={{display:"flex",gap:5,alignItems:"center"}}>
               {FACE_ORDER.map((fc,i)=>{
-                const ck = cubeState[fc]?.[4] ?? "X";
-                const hex = centerHex[ck] ?? "#888";
-                const done = !cubeState[fc]?.includes("X");
-                const isCur = fc===scanFace;
+                const ck  = cubeState[fc]?.[4]??"X";
+                const hex = centerHex[ck]??"#888";
+                const done= !cubeState[fc]?.includes("X");
+                const isCur=fc===scanFace;
                 return (
-                  <div key={fc} title={faceName[fc]} style={{
-                    width:isCur?14:10, height:isCur?14:10,
-                    borderRadius:"50%", cursor:"pointer",
-                    background: done?"#4CAF50": isCur?hex:"rgba(255,255,255,0.15)",
-                    border:isCur?`2.5px solid #fff`:"2px solid transparent",
-                    transition:"all 0.3s", display:"flex",alignItems:"center",justifyContent:"center",
-                    fontSize:8,color:"#fff",fontWeight:900}}
-                    onClick={()=>setScanFace(fc)}>
-                    {done && !isCur ? "✓" : ""}
-                  </div>
+                  <button key={fc} className="btn"
+                    onClick={()=>setScanFace(fc)}
+                    style={{width:isCur?16:11,height:isCur?16:11,padding:0,
+                      borderRadius:"50%",
+                      background:done?"#4CAF50":isCur?hex:"rgba(255,255,255,0.15)",
+                      border:isCur?"2.5px solid #fff":"2px solid transparent",
+                      transition:"all 0.3s",display:"flex",alignItems:"center",
+                      justifyContent:"center",fontSize:7,color:"#fff",fontWeight:900}}>
+                    {done&&!isCur?"✓":""}
+                  </button>
                 );
               })}
             </div>
             <button className="btn" onClick={()=>{
-              const nextIdx = seqIdx+1;
-              if(nextIdx < FACE_ORDER.length) setScanFace(FACE_ORDER[nextIdx]);
+              const ni=seqIdx+1;
+              if(ni<FACE_ORDER.length)setScanFace(FACE_ORDER[ni]);
               else stopCamera();
-            }} style={{
-              color:"#aaa",background:"rgba(255,255,255,0.07)",borderRadius:12,
-              padding:"7px 14px",fontSize:13,fontWeight:600,border:"1px solid rgba(255,255,255,0.1)"}}>
+            }} style={{color:"#aaa",background:"rgba(255,255,255,0.07)",
+              borderRadius:12,padding:"7px 14px",fontSize:13,fontWeight:600,
+              border:"1px solid rgba(255,255,255,0.1)"}}>
               Skip →
             </button>
           </div>
 
-          {/* ── CUBE ANIMATION + INSTRUCTION ── */}
-          <div style={{flexShrink:0,padding:"16px",display:"flex",gap:16,alignItems:"center",
-            borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-            {/* Mini CSS 3D cube showing which face to point at */}
-            <div style={{
-              width:80,height:80,flexShrink:0,
-              perspective:"200px",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <div style={{
-                width:50,height:50,position:"relative",transformStyle:"preserve-3d",
-                transform:`rotateX(${faceAnim[scanFace]?.rotX ?? -20}deg) rotateY(${faceAnim[scanFace]?.rotY ?? 20}deg)`,
-                animation:"cubeRotateIn 0.5s ease",
-                transition:"transform 0.6s cubic-bezier(0.34,1.56,0.64,1)"}}>
-                {/* 6 faces of mini cube */}
-                {([
-                  {f:"U",tr:"rotateX(90deg) translateZ(25px)"},
-                  {f:"D",tr:"rotateX(-90deg) translateZ(25px)"},
-                  {f:"F",tr:"translateZ(25px)"},
-                  {f:"B",tr:"rotateY(180deg) translateZ(25px)"},
-                  {f:"R",tr:"rotateY(90deg) translateZ(25px)"},
-                  {f:"L",tr:"rotateY(-90deg) translateZ(25px)"},
-                ] as {f:string,tr:string}[]).map(({f,tr})=>{
-                  const ck = cubeState[f]?.[4] ?? "X";
-                  const hex = centerHex[ck] ?? "#333";
-                  const isTarget = f===scanFace;
-                  return (
-                    <div key={f} style={{
-                      position:"absolute",
-                      width:50,height:50,
-                      transform:tr,
-                      background: isTarget ? hex : "#1a1a2e",
-                      border:`2px solid ${isTarget ? "#fff" : "#333"}`,
-                      borderRadius:4,
-                      boxShadow: isTarget ? `0 0 20px ${hex}99, inset 0 0 10px rgba(255,255,255,0.2)` : "none",
-                      display:"flex",alignItems:"center",justifyContent:"center",
-                      fontSize: isTarget ? 18 : 0,
-                    }}>
-                      {isTarget && "📷"}
-                    </div>
-                  );
-                })}
+          {/* ── ORIENTATION GUIDE CARD ── */}
+          <div style={{flexShrink:0,margin:"12px 16px",
+            background:"rgba(255,255,255,0.04)",
+            border:`1.5px solid ${accentColor}44`,
+            borderRadius:18,padding:"14px 14px 12px",
+            display:"flex",gap:14,alignItems:"flex-start"}}>
+
+            {/* Mini isometric-style cube diagram */}
+            <div style={{flexShrink:0,position:"relative",width:90,height:90}}>
+              {/* UP label */}
+              <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",
+                display:"flex",flexDirection:"column",alignItems:"center",gap:2,zIndex:2}}>
+                <span style={{color:"#888",fontSize:9,fontWeight:600}}>↑ UP</span>
+                <DiagramFace label={centerLabel[upColorKey]} hex={upColor} size={28}/>
+              </div>
+
+              {/* Main visible face (what camera sees) — center */}
+              <div style={{position:"absolute",bottom:0,left:0,right:0,
+                display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                <div style={{position:"relative"}}>
+                  <DiagramFace label="📷 YOU SEE" hex={accentColor} size={52}
+                    style={{boxShadow:`0 0 16px ${accentColor}66`}}/>
+                  {/* camera icon overlay */}
+                  <div style={{position:"absolute",inset:0,display:"flex",
+                    alignItems:"center",justifyContent:"center",fontSize:20,
+                    pointerEvents:"none"}}>📷</div>
+                </div>
+                {/* Right face hint */}
+                <div style={{display:"flex",alignItems:"center",gap:4}}>
+                  <DiagramFace label={centerLabel[rightColorKey]} hex={rightColor} size={20}/>
+                  <span style={{color:"#666",fontSize:9}}>→ right</span>
+                </div>
               </div>
             </div>
 
-            {/* Text instruction */}
-            <div style={{flex:1}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                <div style={{width:14,height:14,borderRadius:"50%",background:accentColor,
-                  boxShadow:`0 0 8px ${accentColor}88`,flexShrink:0}}/>
-                <span style={{color:"#fff",fontWeight:800,fontSize:15}}>
-                  Face {seqIdx+1}/6 — {faceName[scanFace]}
+            {/* Text instructions */}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:6}}>
+                <div style={{width:10,height:10,borderRadius:"50%",
+                  background:accentColor,flexShrink:0,
+                  boxShadow:`0 0 6px ${accentColor}`}}/>
+                <span style={{color:"#fff",fontWeight:800,fontSize:14}}>
+                  Face {seqIdx+1}/6
                 </span>
               </div>
-              <p style={{color:"#aaa",fontSize:12,lineHeight:1.5,margin:0}}>
-                {scanInstructions[scanFace]}
+
+              {/* Color reference row */}
+              <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:8}}>
+                {[
+                  {label:"📷 Camera sees →", hex:accentColor, name:centerLabel[camColorKey]},
+                  {label:"⬆ Top of photo →",  hex:upColor,    name:centerLabel[upColorKey]},
+                ].map(({label,hex,name})=>(
+                  <div key={label} style={{display:"flex",alignItems:"center",gap:7}}>
+                    <span style={{color:"#777",fontSize:11,minWidth:110}}>{label}</span>
+                    <div style={{width:14,height:14,borderRadius:3,
+                      background:hex==="#FFFFFF"?"#f0f0e8":hex,
+                      border:`1.5px solid ${hex==="#FFFFFF"?"#ccc":"rgba(0,0,0,0.2)"}`,
+                      flexShrink:0}}/>
+                    <span style={{color:"#ddd",fontWeight:700,fontSize:12}}>{name}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p style={{color:"#888",fontSize:11,lineHeight:1.5,margin:0,
+                borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:7}}>
+                {guide?.rotate}
               </p>
             </div>
           </div>
 
           {/* ── CAMERA VIEWFINDER ── */}
-          <div style={{position:"relative",flex:1,minHeight:0,overflow:"hidden"}}>
+          <div style={{position:"relative",flex:1,minHeight:180,overflow:"hidden",
+            borderRadius:"0 0 0 0"}}>
             <video ref={videoRef} autoPlay playsInline muted
               style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
-            {/* 3×3 guide */}
+            {/* 3×3 grid */}
             <div style={{position:"absolute",top:"50%",left:"50%",zIndex:2,
               transform:"translate(-50%,-50%)",
-              width:"min(68vw,240px)",height:"min(68vw,240px)",
+              width:"min(65vw,220px)",height:"min(65vw,220px)",
               border:`3px solid ${accentColor}`,borderRadius:10,
-              boxShadow:`0 0 0 9999px rgba(0,0,0,0.45), 0 0 30px ${accentColor}55`}}>
+              boxShadow:`0 0 0 9999px rgba(0,0,0,0.4),0 0 24px ${accentColor}55`}}>
               {[1,2].map(i=>(
-                <div key={"h"+i} style={{position:"absolute",top:`${i*33.33}%`,left:0,
-                  width:"100%",height:"1.5px",background:`${accentColor}88`}}/>
+                <div key={"h"+i} style={{position:"absolute",top:`${i*33.33}%`,
+                  left:0,width:"100%",height:"1.5px",
+                  background:`${accentColor}88`}}/>
               ))}
               {[1,2].map(i=>(
-                <div key={"v"+i} style={{position:"absolute",left:`${i*33.33}%`,top:0,
-                  width:"1.5px",height:"100%",background:`${accentColor}88`}}/>
+                <div key={"v"+i} style={{position:"absolute",left:`${i*33.33}%`,
+                  top:0,width:"1.5px",height:"100%",
+                  background:`${accentColor}88`}}/>
               ))}
-              {/* Corner markers */}
-              {[["-6px","-6px","borderTop","borderLeft"],["-6px","auto","borderTop","borderRight"],
-                ["auto","-6px","borderBottom","borderLeft"],["auto","auto","borderBottom","borderRight"]
-              ].map(([t,r,bt,bl],ci)=>(
-                <div key={ci} style={{position:"absolute",
-                  top:t==="auto"?undefined:t, bottom:t==="auto"?"−6px":undefined,
-                  left:r==="auto"?undefined:r, right:r==="auto"?"−6px":undefined,
-                  width:18,height:18,
-                  [bt]:`3px solid #fff`,[bl]:`3px solid #fff`}}/>
-              ))}
+              {/* ↑ UP label in viewfinder */}
+              <div style={{position:"absolute",top:-22,left:0,right:0,
+                textAlign:"center",fontSize:10,fontWeight:700,
+                color:accentColor,letterSpacing:"0.5px",
+                textShadow:"0 1px 4px rgba(0,0,0,0.9)"}}>
+                ↑ {centerLabel[upColorKey]} is UP
+              </div>
+              {/* → RIGHT label */}
+              <div style={{position:"absolute",right:-52,top:"50%",
+                transform:"translateY(-50%)",fontSize:9,fontWeight:700,
+                color:accentColor,whiteSpace:"nowrap",
+                textShadow:"0 1px 4px rgba(0,0,0,0.9)"}}>
+                → {centerLabel[rightColorKey]}
+              </div>
             </div>
           </div>
 
           {/* ── SCAN BUTTON ── */}
           <div style={{flexShrink:0,background:"rgba(5,5,15,0.98)",
-            padding:"12px 16px",paddingBottom:"max(18px,env(safe-area-inset-bottom))"}}>
+            padding:"12px 16px",
+            paddingBottom:"max(18px,env(safe-area-inset-bottom))"}}>
             <button className="btn" onClick={captureAndScan} disabled={scanning}
-              style={{
-                width:"100%",padding:"17px",borderRadius:18,
+              style={{width:"100%",padding:"17px",borderRadius:18,
                 fontWeight:800,fontSize:17,border:"none",
-                background:scanning?"rgba(255,255,255,0.07)":`linear-gradient(135deg,${accentColor},${accentColor}bb)`,
+                background:scanning
+                  ?"rgba(255,255,255,0.07)"
+                  :`linear-gradient(135deg,${accentColor},${accentColor}bb)`,
                 color:scanning?"#666":"#fff",
                 boxShadow:scanning?"none":`0 6px 24px ${accentColor}55`,
                 display:"flex",alignItems:"center",justifyContent:"center",gap:12,
                 transition:"all 0.2s"}}>
               {scanning
-                ? <><span style={{fontSize:20,animation:"spin 1s linear infinite"}}>⟳</span> Analyzing…</>
-                : <><span style={{fontSize:22}}>📷</span> Scan this face</>}
+                ? <><span style={{animation:"spin 1s linear infinite",fontSize:20}}>⟳</span> Analyzing…</>
+                : <><span style={{fontSize:22}}>📷</span> Scan — {centerLabel[camColorKey]} face</>}
             </button>
           </div>
         </div>
