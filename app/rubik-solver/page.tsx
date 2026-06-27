@@ -629,61 +629,80 @@ export default function RubikSolverPage() {
 
       {/* CAMERA OVERLAY */}
       {showScan && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.95)",zIndex:50,
-          display:"flex",flexDirection:"column"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-            padding:"14px 16px",color:"#fff"}}>
-            <button className="btn" onClick={stopCamera} style={{color:"#fff",
-              background:"rgba(255,255,255,0.15)",borderRadius:10,padding:"8px 16px",fontSize:14,fontWeight:600}}>
-              ✕ Cancel
-            </button>
-            <span style={{fontWeight:700,fontSize:15,color:"#FFD700"}}>
-              Scanning {FACE_LABEL[scanFace]?.en} face
-            </span>
-            <div style={{width:80}}/>
+        <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",flexDirection:"column",background:"#000"}}>
+          {/* Video area */}
+          <div style={{position:"relative",flex:1,minHeight:0,overflow:"hidden"}}>
+            <video ref={videoRef} autoPlay playsInline muted
+              style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+            {/* Top bar */}
+            <div style={{position:"absolute",top:0,left:0,right:0,zIndex:3,
+              display:"flex",alignItems:"center",justifyContent:"space-between",
+              padding:"14px 16px",
+              background:"linear-gradient(to bottom,rgba(0,0,0,0.75),transparent)"}}>
+              <button className="btn" onClick={stopCamera} style={{
+                color:"#fff",background:"rgba(0,0,0,0.5)",borderRadius:20,
+                padding:"8px 18px",fontSize:14,fontWeight:600,
+                border:"1px solid rgba(255,255,255,0.25)"}}>
+                ✕ Cancel
+              </button>
+              <span style={{fontWeight:700,fontSize:15,color:"#FFD700",
+                textShadow:"0 1px 6px rgba(0,0,0,0.9)"}}>
+                📷 {FACE_LABEL[scanFace]?.en} face
+              </span>
+              <div style={{width:80}}/>
+            </div>
+            {/* 3x3 guide */}
+            <div style={{position:"absolute",top:"50%",left:"50%",zIndex:2,
+              transform:"translate(-50%,-50%)",
+              width:"min(70vw,250px)",height:"min(70vw,250px)",
+              border:"3px solid #FFD700",borderRadius:10,
+              boxShadow:"0 0 0 9999px rgba(0,0,0,0.5),0 0 20px rgba(255,215,0,0.4)"}}>
+              {[1,2].map(i=>(
+                <div key={"h"+i} style={{position:"absolute",top:`${i*33.33}%`,left:0,
+                  width:"100%",height:"1.5px",background:"rgba(255,215,0,0.6)"}}/>
+              ))}
+              {[1,2].map(i=>(
+                <div key={"v"+i} style={{position:"absolute",left:`${i*33.33}%`,top:0,
+                  width:"1.5px",height:"100%",background:"rgba(255,215,0,0.6)"}}/>
+              ))}
+            </div>
           </div>
-          <video ref={videoRef} autoPlay playsInline muted
-            style={{flex:1,objectFit:"cover",width:"100%"}}/>
-          {/* 3x3 grid overlay */}
-          <div style={{position:"absolute",top:"50%",left:"50%",
-            transform:"translate(-50%,-60%)",
-            width:"min(75vw,280px)",height:"min(75vw,280px)",
-            border:"3px solid rgba(255,215,0,0.9)",borderRadius:8,
-            boxShadow:"0 0 0 2000px rgba(0,0,0,0.55)"}}>
-            {[1,2].map(i=>(
-              <div key={`h${i}`} style={{position:"absolute",top:`${i*33.33}%`,left:0,
-                width:"100%",height:"1px",background:"rgba(255,215,0,0.6)"}}/>
-            ))}
-            {[1,2].map(i=>(
-              <div key={`v${i}`} style={{position:"absolute",left:`${i*33.33}%`,top:0,
-                width:"1px",height:"100%",background:"rgba(255,215,0,0.6)"}}/>
-            ))}
-          </div>
-          <div style={{padding:"14px 16px 20px",background:"rgba(0,0,0,0.85)"}}>
-            <p style={{color:"#aaa",fontSize:12,textAlign:"center",marginBottom:10}}>
-              {tx("scanHint",lang)}
-            </p>
-            <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:12}}>
-              {["F","R","B","L","U","D"].map(f=>(
-                <button key={f} className="btn" onClick={()=>setScanFace(f)} style={{
-                  padding:"7px 13px",borderRadius:10,fontSize:13,fontWeight:700,
-                  background:scanFace===f?"#FF6B00":"rgba(255,255,255,0.1)",
-                  color:scanFace===f?"#fff":"#aaa",
-                  border:`1.5px solid ${scanFace===f?"#FF6B00":"rgba(255,255,255,0.2)"}`}}>
-                  {FACE_LABEL[f]?.en}
+
+          {/* Bottom controls — fixed, always on screen */}
+          <div style={{flexShrink:0,background:"#0a0a0a",
+            padding:"12px 16px 20px",
+            paddingBottom:"max(20px,env(safe-area-inset-bottom))"}}>
+            {/* Face buttons */}
+            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:12,flexWrap:"wrap"}}>
+              {["F","R","B","L","U","D"].map(fc=>(
+                <button key={fc} className="btn" onClick={()=>setScanFace(fc)} style={{
+                  padding:"7px 12px",borderRadius:10,fontSize:13,fontWeight:700,
+                  background:scanFace===fc?"#FF6B00":"rgba(255,255,255,0.07)",
+                  color:scanFace===fc?"#fff":"#777",
+                  border:`1.5px solid ${scanFace===fc?"#FF6B00":"rgba(255,255,255,0.12)"}`}}>
+                  {FACE_LABEL[fc]?.en}
                 </button>
               ))}
             </div>
-            <button className="btn" onClick={captureAndScan} disabled={scanning} style={{
-              width:"100%",padding:"14px",borderRadius:16,fontWeight:800,fontSize:16,
-              background:scanning?"rgba(255,255,255,0.15)":"linear-gradient(135deg,#FF6B00,#FFAA00)",
-              color:"#fff",boxShadow:scanning?"none":"0 4px 18px rgba(255,107,0,0.45)"}}>
+            {/* Capture button */}
+            <button
+              className="btn"
+              onClick={captureAndScan}
+              disabled={scanning}
+              style={{
+                width:"100%",padding:"17px",borderRadius:18,
+                fontWeight:800,fontSize:17,border:"none",
+                background:scanning
+                  ?"rgba(255,255,255,0.08)"
+                  :"linear-gradient(135deg,#FF6B00,#FFAA00)",
+                color:scanning?"#888":"#fff",
+                boxShadow:scanning?"none":"0 6px 24px rgba(255,107,0,0.55)",
+                display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
               {scanning
-                ? <span style={{animation:"pulse 1s infinite"}}>{tx("scanning",lang)}</span>
-                : `📷 Scan ${FACE_LABEL[scanFace]?.en}`}
+                ? <span>⏳ Analyzing with AI…</span>
+                : <span>📷 &nbsp;Scan {FACE_LABEL[scanFace]?.en} face</span>}
             </button>
           </div>
-          {/* canvas created dynamically in captureAndScan */}
         </div>
       )}
 
