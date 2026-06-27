@@ -393,11 +393,12 @@ export default function RubikSolverPage() {
   const pendingStreamRef = useRef<MediaStream|null>(null);
 
   useEffect(() => {
-    if (showScan && videoRef.current && pendingStreamRef.current) {
+    // Assign stream to video when scan screen appears (not setup screen)
+    if (showScan && !scanSetup && videoRef.current && pendingStreamRef.current) {
       videoRef.current.srcObject = pendingStreamRef.current;
       videoRef.current.play().catch(()=>{});
     }
-  }, [showScan]);
+  }, [showScan, scanSetup]);
 
   const syncState = useCallback((st: Record<string,string>) => {
     setCubeState({...st});
@@ -555,13 +556,17 @@ export default function RubikSolverPage() {
     setScanFace("U");
   };
   const startCameraAfterSetup = async () => {
-    setScanSetup(false);
-    setScanFace("U");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}
+      });
       pendingStreamRef.current = stream;
       setCamStream(stream);
-    } catch(e) { alert("Camera access denied. Please allow camera permissions."); }
+      setScanSetup(false);  // show camera AFTER stream acquired
+      setScanFace("U");
+    } catch(e) {
+      alert("Camera access denied. Please allow camera permissions in your browser settings.");
+    }
   };
   const stopCamera = () => {
     camStream?.getTracks().forEach(t=>t.stop());
@@ -627,8 +632,17 @@ export default function RubikSolverPage() {
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @keyframes cubeSlowSpin{
+          0%{transform:rotateX(-15deg) rotateY(0deg)}
+          100%{transform:rotateX(-15deg) rotateY(360deg)}
+        }
         @keyframes cubeRotateIn{from{opacity:0;transform:scale(0.7) rotateY(-30deg)}to{opacity:1}}
-        @keyframes cubeSpin{from{transform:rotateX(-22deg) rotateY(-60deg) scale(0.8);opacity:0}to{opacity:1}}
+        @keyframes cubeSettle_U{0%{transform:rotateX(-22deg) rotateY(-150deg) scale(0.7);opacity:0}60%{opacity:1}100%{transform:rotateX(-22deg) rotateY(0deg) scale(1);opacity:1}} 
+        @keyframes cubeSettle_D{0%{transform:rotateX(-22deg) rotateY(-150deg) scale(0.7);opacity:0}60%{opacity:1}100%{transform:rotateX(-22deg) rotateY(0deg) scale(1);opacity:1}} 
+        @keyframes cubeSettle_F{0%{transform:rotateX(-22deg) rotateY(-150deg) scale(0.7);opacity:0}60%{opacity:1}100%{transform:rotateX(-22deg) rotateY(0deg) scale(1);opacity:1}} 
+        @keyframes cubeSettle_R{0%{transform:rotateX(-22deg) rotateY(-240deg) scale(0.7);opacity:0}60%{opacity:1}100%{transform:rotateX(-22deg) rotateY(-90deg) scale(1);opacity:1}} 
+        @keyframes cubeSettle_B{0%{transform:rotateX(-22deg) rotateY(30deg) scale(0.7);opacity:0}60%{opacity:1}100%{transform:rotateX(-22deg) rotateY(180deg) scale(1);opacity:1}} 
+        @keyframes cubeSettle_L{0%{transform:rotateX(-22deg) rotateY(-60deg) scale(0.7);opacity:0}60%{opacity:1}100%{transform:rotateX(-22deg) rotateY(90deg) scale(1);opacity:1}} 
         .btn{border:none;cursor:pointer;font-family:inherit;transition:all 0.18s;outline:none;}
         .btn:active{transform:scale(0.93)!important;}
       `}</style>
@@ -903,13 +917,16 @@ export default function RubikSolverPage() {
               {/* Big animated CSS cube */}
               <div style={{perspective:"320px",width:160,height:160,
                 display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {/* Slow continuous Y rotation wrapper — gives life to the cube */}
                 <div style={{
+                  transformStyle:"preserve-3d",
+                  animation:"cubeSlowSpin 8s linear infinite",
+                }}>
+                <div key={scanFace} style={{
                   width:90,height:90,position:"relative",
                   transformStyle:"preserve-3d",
-                  // Animate: rotate to show target face prominently
-                  transform:`rotateX(-22deg) rotateY(${orient.animRotY}deg)`,
-                  transition:"transform 0.7s cubic-bezier(0.34,1.2,0.64,1)",
-                  animation:"cubeSpin 0.6s cubic-bezier(0.34,1.2,0.64,1)",
+                  // Continuously spin then settle on target face
+                  animation:`cubeSettle_${scanFace} 1.0s ease-out forwards`,
                 }}>
                   {([
                     {fc:"F", tr:"translateZ(45px)",              nx:0,  ny:0},
@@ -963,6 +980,7 @@ export default function RubikSolverPage() {
                     );
                   })}
                 </div>
+                </div>{/* end slow spin wrapper */}
               </div>
 
               {/* Orientation labels around cube */}
